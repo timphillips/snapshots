@@ -9,5 +9,12 @@ img {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  display: none;
+  user-select: none;
+  opacity: 0;
+}
+
+input {
+  position: absolute;
+  top: 0;
+  left: 0;
 }

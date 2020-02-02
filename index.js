@@ -1,65 +1,110 @@
+const { fromEvent } = rxjs;
+const { map, debounceTime, scan, startWith, combineLatest, distinctUntilChanged } = rxjs.operators;
+
 function init() {
-  window.addEventListener("DOMMouseScroll", onMouseWheel, false);
-  window.onmousewheel = document.onmousewheel = onMouseWheel; // IE
+  // event streams
+  const zoomStream = fromEvent(window.document.getElementById("zoom"), "input");
+  const scrollStream = fromEvent(window.document, "mousewheel");
 
-  const imageIds = ["image1", "image2", "image3", "image4", "image5", "image6"];
-  const images = imageIds.map(id => window.document.getElementById(id));
+  // update streams
+  const scrollPositionStream = scrollStream.pipe(
+    // are we scrolling up or down?
+    map(event => ((event.deltaY * -1 || event.wheelDelta || event.detail * -1) > 0 ? 1 : -1)),
+    scan((position, adjustment) => {
+      const newPosition = position + adjustment;
+      return newPosition < 0 ? 0 : newPosition;
+    }, 0),
+    startWith(0)
+  );
 
-  // initial settings
-  for (const image of images) {
-    image.style.opacity = 0;
-    image.style.filter = "blur(5px)";
-    image.style.height = "700px";
-    image.style.display = "inherit";
-  }
+  const stepsPerImage = 20;
+  const imageIndexStream = scrollPositionStream.pipe(
+    map(position => Math.floor(position / stepsPerImage)),
+    distinctUntilChanged()
+  );
 
-  let tick = 0;
-  const ticksPerImage = 40;
+  const images = window.document.images;
+  const imageStream = imageIndexStream.pipe(map(imageIndex => images[imageIndex]));
 
-  function onMouseWheel(event) {
-    const scroll = event.deltaY * -1 || event.wheelDelta || event.detail * -1;
+  const scrollPercentWithinImageStream = scrollPositionStream.pipe(
+    map(position => {
+      const imageIndex = Math.floor(position / stepsPerImage);
+      return ((position - imageIndex * stepsPerImage) / stepsPerImage) * 100;
+    })
+  );
 
-    const imageIndex = Math.floor(tick / ticksPerImage);
-    if (tick < 0 || imageIndex > images.length - 1) {
-      return;
+  const imageOpacityStream = scrollPercentWithinImageStream.pipe(
+    map(percent => {
+      if (percent < 20) {
+        return percent / 20;
+      }
+      if (percent > 75) {
+        return 1 - (percent - 75) / 20;
+      }
+      return 1;
+    }),
+    distinctUntilChanged(),
+    startWith(0)
+  );
+
+  const imageBlurStream = scrollPercentWithinImageStream.pipe(
+    map(percent => {
+      if (percent < 10) {
+        return 5;
+      }
+      if (percent >= 10 && percent < 15) {
+        return 4;
+      }
+      if (percent >= 15 && percent < 20) {
+        return 3;
+      }
+      if (percent >= 20 && percent < 25) {
+        return 2;
+      }
+      if (percent >= 25 && percent < 30) {
+        return 1;
+      }
+
+      if (percent >= 75 && percent < 80) {
+        return 1;
+      }
+      if (percent >= 80 && percent < 85) {
+        return 2;
+      }
+      if (percent >= 85 && percent < 90) {
+        return 3;
+      }
+      if (percent >= 90 && percent < 95) {
+        return 4;
+      }
+      if (percent >= 95) {
+        return 5;
+      }
+      return 0;
+    }),
+    distinctUntilChanged()
+  );
+
+  const imageHeightStream = zoomStream.pipe(
+    map(event => event.target.value),
+    startWith(100),
+    map(zoom => window.innerHeight * 0.85 * (zoom / 100))
+  );
+
+  // apply updates
+  imageHeightStream.subscribe(height => {
+    for (const image of images) {
+      image.style.height = `${height}px`;
     }
+  });
+  imageStream
+    .pipe(combineLatest(imageHeightStream))
+    .subscribe(([image, height]) => (image.style.height = `${height}px`));
+  imageStream.pipe(combineLatest(imageOpacityStream)).subscribe(([image, opacity]) => (image.style.opacity = opacity));
+  imageStream
+    .pipe(combineLatest(imageBlurStream))
+    .subscribe(([image, blur]) => (image.style.filter = `blur(${blur}px)`));
 
-    const image = images[imageIndex];
-    const ticksWithinImage = tick - imageIndex * ticksPerImage;
-
-    // fade in
-    if (ticksWithinImage < 10) {
-      const opacity = Number(image.style.opacity);
-      image.style.opacity = opacity + (scroll > 0 ? 0.1 : -0.1);
-    }
-    if (ticksWithinImage >= 5 && ticksWithinImage < 15) {
-      const blur = Number(
-        image.style.filter.replace("blur(", "").replace("px)", "")
-      );
-      image.style.filter = `blur(${blur + (scroll > 0 ? -0.5 : 0.5)}px)`;
-
-      const height = Number(image.style.height.replace("px", ""));
-      image.style.height = `${height + (scroll > 0 ? -1 : 1)}px`;
-    }
-
-    // fade out
-    if (ticksWithinImage >= 27 && ticksWithinImage < 33) {
-      const blur = Number(
-        image.style.filter.replace("blur(", "").replace("px)", "")
-      );
-      image.style.filter = `blur(${blur + (scroll > 0 ? 0.5 : -0.5)}px)`;
-      const height = Number(image.style.height.replace("px", ""));
-      image.style.height = `${height + (scroll > 0 ? 1 : -1)}px`;
-    }
-    if (ticksWithinImage >= 30 && ticksWithinImage <= ticksPerImage) {
-      const opacity = Number(image.style.opacity);
-      image.style.opacity = opacity + (scroll > 0 ? -0.1 : 0.1);
-    }
-
-    if (scroll > 0) {
-      tick++;
-    } else if (tick > 0) {
-      tick--;
-    }
-  }
+  imageOpacityStream.subscribe(x => console.log("Opacity", x));
+  imageBlurStream.subscribe(x => console.log("Blur", x));
 }
