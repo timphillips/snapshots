@@ -1,6 +1,22 @@
 const { fromEvent } = rxjs;
 const { map, debounceTime, scan, startWith, combineLatest, distinctUntilChanged } = rxjs.operators;
 
+/**
+ * Shuffles an array. Returns a new array rather an mutating the input array.
+ *
+ * https://stackoverflow.com/a/12646864
+ */
+function shuffleArray(array) {
+  const a = array.slice();
+
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+
+  return a;
+}
+
 function init() {
   // event streams
   const zoomStream = fromEvent(window.document.getElementById("zoom"), "input");
@@ -9,7 +25,7 @@ function init() {
   // update streams
   const scrollPositionStream = scrollStream.pipe(
     // are we scrolling up or down?
-    map(event => ((event.deltaY * -1 || event.wheelDelta || event.detail * -1) > 0 ? 1 : -1)),
+    map(event => ((event.deltaY * -1 || event.wheelDelta || event.detail * -1) > 0 ? -1 : 1)),
     scan((position, adjustment) => {
       const newPosition = position + adjustment;
       return newPosition < 0 ? 0 : newPosition;
@@ -23,7 +39,17 @@ function init() {
     distinctUntilChanged()
   );
 
-  const images = window.document.images;
+  const images = shuffleArray([
+    "image1.gif",
+    "image2.gif",
+    "image3.gif",
+    "image4.gif",
+    "image5.gif",
+    "image6.gif",
+    "image7.gif",
+    "image8.gif"
+  ]);
+
   const imageStream = imageIndexStream.pipe(map(imageIndex => images[imageIndex]));
 
   const scrollPercentWithinImageStream = scrollPositionStream.pipe(
@@ -92,18 +118,15 @@ function init() {
   );
 
   // apply updates
-  imageHeightStream.subscribe(height => {
-    for (const image of images) {
-      image.style.height = `${height}px`;
-    }
+  const imageElement = window.document.images[0];
+  imageStream.subscribe(image => {
+    imageElement.src = image;
   });
-  imageStream
-    .pipe(combineLatest(imageHeightStream))
-    .subscribe(([image, height]) => (image.style.height = `${height}px`));
-  imageStream.pipe(combineLatest(imageOpacityStream)).subscribe(([image, opacity]) => (image.style.opacity = opacity));
-  imageStream
-    .pipe(combineLatest(imageBlurStream))
-    .subscribe(([image, blur]) => (image.style.filter = `blur(${blur}px)`));
+  imageHeightStream.subscribe(height => {
+    imageElement.style.height = `${height}px`;
+  });
+  imageOpacityStream.subscribe(opacity => (imageElement.style.opacity = opacity));
+  imageBlurStream.subscribe(blur => (imageElement.style.filter = `blur(${blur}px)`));
 
   imageOpacityStream.subscribe(x => console.log("Opacity", x));
   imageBlurStream.subscribe(x => console.log("Blur", x));
