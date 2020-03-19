@@ -5,9 +5,10 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title></title>
+    <title>snapshots | tim-phillips.com</title>
 
     <link rel="stylesheet" href="index.css" />
+    <link href="https://fonts.googleapis.com/css?family=Nova+Cut&display=swap" rel="stylesheet" />
     <script src="https://unpkg.com/@reactivex/rxjs@6.5.4/dist/global/rxjs.umd.js" defer></script>
     <script src="index.js" defer></script>
   </head>
@@ -21,6 +22,21 @@
     <img id="image3" src="image3.gif" />
     <img id="image2" src="image2.gif" />
     <img id="image1" src="image1.gif" />
-    <input id="zoom" type="range" min="20" max="200" />
+    <div class="controls">
+      <h1 class="title">snapshots</h1>
+      <div class="control">
+        <label class="controlLabel" for="zoom">Size</label>
+        <br />
+        <input id="zoom" class="slider" type="range" min="20" max="200" />
+      </div>
+      <div class="control">
+        <label class="controlLabel" for="sepia">Sepia</label>
+        <br />
+        <input id="sepia" class="slider" type="range" min="0" max="10" />
+      </div>
+      <div class="footer">
+        Tim Phillips
+      </div>
+    </div>
   </body>
 </html>
