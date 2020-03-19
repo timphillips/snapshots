@@ -20,6 +20,7 @@ function shuffleArray(array) {
 function init() {
   // event streams
   const zoomStream = fromEvent(window.document.getElementById("zoom"), "input");
+  const sepiaStream = fromEvent(window.document.getElementById("sepia"), "input");
   const scrollStream = fromEvent(window.document, "mousewheel");
 
   // update streams
@@ -114,7 +115,12 @@ function init() {
   const imageHeightStream = zoomStream.pipe(
     map(event => event.target.value),
     startWith(100),
-    map(zoom => window.innerHeight * 0.85 * (zoom / 100))
+    map(zoom => window.innerHeight * (zoom / 100))
+  );
+
+  const imageSepiaStream = sepiaStream.pipe(
+    map(event => event.target.value / 10),
+    startWith(0)
   );
 
   // apply updates
@@ -126,7 +132,9 @@ function init() {
     imageElement.style.height = `${height}px`;
   });
   imageOpacityStream.subscribe(opacity => (imageElement.style.opacity = opacity));
-  imageBlurStream.subscribe(blur => (imageElement.style.filter = `blur(${blur}px)`));
+  imageBlurStream
+    .pipe(combineLatest(imageSepiaStream))
+    .subscribe(([blur, sepia]) => (imageElement.style.filter = `blur(${blur}px)  sepia(${sepia})`));
 
   imageOpacityStream.subscribe(x => console.log("Opacity", x));
   imageBlurStream.subscribe(x => console.log("Blur", x));
