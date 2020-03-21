@@ -18,47 +18,6 @@ function shuffleArray(array) {
 }
 
 function init() {
-  // DOM element handlers
-  const controlsElement = window.document.getElementById("controls");
-  const imageElement = window.document.getElementById("image");
-  const introElement = window.document.getElementById("intro");
-  const sepiaElement = window.document.getElementById("sepia");
-  const zoomElement = window.document.getElementById("zoom");
-
-  // input event streams
-  const zoomStream = fromEvent(zoomElement, "input");
-  const sepiaStream = fromEvent(sepiaElement, "input");
-  const scrollStream = fromEvent(window.document, "mousewheel");
-
-  // update streams
-  const progressStream = scrollStream.pipe(
-    // are we scrolling up or down?
-    map(event => ((event.deltaY * -1 || event.wheelDelta || event.detail * -1) > 0 ? -1 : 1)),
-    scan((progress, adjustment) => {
-      const newProgress = progress + adjustment;
-      return newProgress < 0 ? 0 : newProgress;
-    }, 0),
-    startWith(0)
-  );
-
-  const stepsPerImage = 20;
-
-  const controlsOpacityStream = progressStream.pipe(
-    filter(progress => progress <= 10),
-    map(progress => (progress <= 5 ? 0 : (progress / 5) * 2)),
-    distinctUntilChanged()
-  );
-
-  const introOpacityStream = progressStream.pipe(
-    filter(progress => progress <= 5),
-    map(progress => (progress === 0 ? 1 : 1 - (progress / 5) * 2))
-  );
-
-  const imageIndexStream = progressStream.pipe(
-    map(progress => Math.floor(progress / stepsPerImage)),
-    distinctUntilChanged()
-  );
-
   const images = shuffleArray([
     "image1.gif",
     "image2.gif",
@@ -70,7 +29,65 @@ function init() {
     "image8.gif"
   ]);
 
-  const imageStream = imageIndexStream.pipe(map(imageIndex => images[imageIndex]));
+  // DOM element handlers
+  const controlsElement = window.document.getElementById("controls");
+  const imageElement = window.document.getElementById("image");
+  const introElement = window.document.getElementById("intro");
+  const outroElement = window.document.getElementById("outro");
+  const sepiaElement = window.document.getElementById("sepia");
+  const zoomElement = window.document.getElementById("zoom");
+
+  // input event streams
+  const zoomStream = fromEvent(zoomElement, "input");
+  const sepiaStream = fromEvent(sepiaElement, "input");
+  const scrollStream = fromEvent(window.document, "mousewheel");
+
+  // update streams
+  const stepsPerImage = 20;
+  const progressLimit = stepsPerImage * images.length;
+
+  const progressStream = scrollStream.pipe(
+    // are we scrolling up or down?
+    map(event => ((event.deltaY * -1 || event.wheelDelta || event.detail * -1) > 0 ? -1 : 1)),
+    scan((progress, adjustment) => {
+      const newProgress = progress + adjustment;
+      return newProgress < 0 ? 0 : newProgress > progressLimit ? progress : newProgress;
+    }, 0),
+    startWith(0)
+  );
+
+  const controlsOpacityStream = progressStream.pipe(
+    map(progress => {
+      if (progress > 8) {
+        return 1;
+      }
+      if (progress < 3) {
+        return 0;
+      }
+      return (progress - 3) / 5;
+    }),
+    distinctUntilChanged()
+  );
+
+  const introOpacityStream = progressStream.pipe(
+    filter(progress => progress <= 5),
+    map(progress => (progress === 0 ? 1 : 1 - (progress / 5) * 2))
+  );
+
+  const outroOpacityStream = progressStream.pipe(
+    map(progress => (progress === progressLimit ? 1 : 0)),
+    startWith(0),
+    distinctUntilChanged()
+  );
+
+  const imageIndexStream = progressStream.pipe(
+    map(progress => Math.floor(progress / stepsPerImage)),
+    distinctUntilChanged()
+  );
+
+  const imageStream = imageIndexStream.pipe(
+    map(imageIndex => (imageIndex < images.length - 1 ? images[imageIndex] : images[images.length - 1]))
+  );
 
   const percentWithinImageStream = progressStream.pipe(
     map(progress => {
@@ -107,6 +124,13 @@ function init() {
       if (progress === 7) {
         return 0.9;
       }
+      if (progress === 8) {
+        return 1;
+      }
+      if (progress >= progressLimit) {
+        return 0;
+      }
+
       if (percent < 20) {
         return percent / 20;
       }
@@ -159,7 +183,17 @@ function init() {
   const imageHeightStream = zoomStream.pipe(
     map(event => event.target.value),
     startWith(100),
-    map(zoom => window.innerHeight * (zoom / 100))
+    combineLatest(percentWithinImageStream),
+    map(([zoom, percentWithinImage]) => {
+      const baseHeight = window.innerHeight * ((zoom / 100) * 0.9);
+      if (percentWithinImage <= 25) {
+        return baseHeight - ((25 - percentWithinImage) * zoom) / 200;
+      }
+      if (percentWithinImage > 75) {
+        return baseHeight + ((75 - percentWithinImage) * zoom) / 200;
+      }
+      return baseHeight;
+    })
   );
 
   const imageSepiaStream = sepiaStream.pipe(
@@ -169,8 +203,9 @@ function init() {
   );
 
   // apply updates
-  controlsOpacityStream.subscribe(opacity => (controlsElement.style.opacity = opacity));
-  introOpacityStream.subscribe(opacity => (introElement.style.opacity = opacity));
+  controlsOpacityStream.subscribe(opacity => setOpacity(controlsElement, opacity));
+  introOpacityStream.subscribe(opacity => setOpacity(introElement, opacity));
+  outroOpacityStream.subscribe(opacity => setOpacity(outroElement, opacity));
   imageStream.subscribe(image => (imageElement.src = image));
   imageHeightStream.subscribe(height => (imageElement.style.height = `${height}px`));
   imageOpacityStream.subscribe(opacity => (imageElement.style.opacity = opacity));
@@ -179,4 +214,13 @@ function init() {
     .subscribe(([blur, sepia]) => (imageElement.style.filter = `blur(${blur}px)  sepia(${sepia})`));
 
   progressStream.subscribe(x => console.log("Progress", x));
+}
+
+function setOpacity(element, opacity) {
+  if (opacity <= 0 && element.style.display !== "none") {
+    element.style.display = "none";
+  } else if (element.style.display === "none") {
+    element.style.display = "inherit";
+  }
+  element.style.opacity = opacity;
 }

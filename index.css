@@ -13,14 +13,18 @@ a {
   text-decoration: inherit;
 }
 
+a:hover {
+  text-decoration: underline;
+}
+
 *::selection {
   color: black;
   background-color: white;
 }
 
-/* Intro */
+/* Blurb */
 
-.intro {
+.blurb {
   position: absolute;
   left: calc(50% - 150px);
   top: calc(50% - 100px);
@@ -30,15 +34,15 @@ a {
   transition: opacity 0.1s linear;
 }
 
-.intro::selection {
-  color: white;
-  background-color: white;
-}
-
-.introTitle {
+.blurbTitle {
   font-family: "Nova Cut", cursive;
   font-weight: 700;
   font-size: 19px;
+}
+
+.outro {
+  text-align: center;
+  opacity: 0;
 }
 
 /* Image */
@@ -120,8 +124,4 @@ a {
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 2px;
-}
-
-.footer:hover {
-  text-decoration: underline;
 }
