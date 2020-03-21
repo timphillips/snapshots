@@ -1,8 +1,8 @@
 const { fromEvent } = rxjs;
-const { map, debounceTime, scan, startWith, combineLatest, distinctUntilChanged } = rxjs.operators;
+const { map, filter, debounceTime, scan, startWith, combineLatest, distinctUntilChanged } = rxjs.operators;
 
 /**
- * Shuffles an array. Returns a new array rather an mutating the input array.
+ * Shuffles an array.
  *
  * https://stackoverflow.com/a/12646864
  */
@@ -18,25 +18,44 @@ function shuffleArray(array) {
 }
 
 function init() {
-  // event streams
-  const zoomStream = fromEvent(window.document.getElementById("zoom"), "input");
-  const sepiaStream = fromEvent(window.document.getElementById("sepia"), "input");
+  // DOM element handlers
+  const controlsElement = window.document.getElementById("controls");
+  const imageElement = window.document.getElementById("image");
+  const introElement = window.document.getElementById("intro");
+  const sepiaElement = window.document.getElementById("sepia");
+  const zoomElement = window.document.getElementById("zoom");
+
+  // input event streams
+  const zoomStream = fromEvent(zoomElement, "input");
+  const sepiaStream = fromEvent(sepiaElement, "input");
   const scrollStream = fromEvent(window.document, "mousewheel");
 
   // update streams
-  const scrollPositionStream = scrollStream.pipe(
+  const progressStream = scrollStream.pipe(
     // are we scrolling up or down?
     map(event => ((event.deltaY * -1 || event.wheelDelta || event.detail * -1) > 0 ? -1 : 1)),
-    scan((position, adjustment) => {
-      const newPosition = position + adjustment;
-      return newPosition < 0 ? 0 : newPosition;
+    scan((progress, adjustment) => {
+      const newProgress = progress + adjustment;
+      return newProgress < 0 ? 0 : newProgress;
     }, 0),
     startWith(0)
   );
 
   const stepsPerImage = 20;
-  const imageIndexStream = scrollPositionStream.pipe(
-    map(position => Math.floor(position / stepsPerImage)),
+
+  const controlsOpacityStream = progressStream.pipe(
+    filter(progress => progress <= 10),
+    map(progress => (progress <= 5 ? 0 : (progress / 5) * 2)),
+    distinctUntilChanged()
+  );
+
+  const introOpacityStream = progressStream.pipe(
+    filter(progress => progress <= 5),
+    map(progress => (progress === 0 ? 1 : 1 - (progress / 5) * 2))
+  );
+
+  const imageIndexStream = progressStream.pipe(
+    map(progress => Math.floor(progress / stepsPerImage)),
     distinctUntilChanged()
   );
 
@@ -53,15 +72,41 @@ function init() {
 
   const imageStream = imageIndexStream.pipe(map(imageIndex => images[imageIndex]));
 
-  const scrollPercentWithinImageStream = scrollPositionStream.pipe(
-    map(position => {
-      const imageIndex = Math.floor(position / stepsPerImage);
-      return ((position - imageIndex * stepsPerImage) / stepsPerImage) * 100;
+  const percentWithinImageStream = progressStream.pipe(
+    map(progress => {
+      const imageIndex = Math.floor(progress / stepsPerImage);
+      return ((progress - imageIndex * stepsPerImage) / stepsPerImage) * 100;
     })
   );
 
-  const imageOpacityStream = scrollPercentWithinImageStream.pipe(
-    map(percent => {
+  const imageOpacityStream = progressStream.pipe(
+    combineLatest(percentWithinImageStream),
+    map(([progress, percent]) => {
+      // TODO: remove magic strings
+      if (progress === 0) {
+        return 0.2;
+      }
+      if (progress === 1) {
+        return 0.3;
+      }
+      if (progress === 2) {
+        return 0.4;
+      }
+      if (progress === 3) {
+        return 0.5;
+      }
+      if (progress === 4) {
+        return 0.6;
+      }
+      if (progress === 5) {
+        return 0.7;
+      }
+      if (progress === 6) {
+        return 0.8;
+      }
+      if (progress === 7) {
+        return 0.9;
+      }
       if (percent < 20) {
         return percent / 20;
       }
@@ -70,11 +115,10 @@ function init() {
       }
       return 1;
     }),
-    distinctUntilChanged(),
-    startWith(0)
+    distinctUntilChanged()
   );
 
-  const imageBlurStream = scrollPercentWithinImageStream.pipe(
+  const imageBlurStream = percentWithinImageStream.pipe(
     map(percent => {
       if (percent < 10) {
         return 5;
@@ -119,23 +163,20 @@ function init() {
   );
 
   const imageSepiaStream = sepiaStream.pipe(
-    map(event => event.target.value / 10),
-    startWith(0)
+    map(event => event.target.value),
+    startWith(0),
+    map(sepia => sepia / 10)
   );
 
   // apply updates
-  const imageElement = window.document.images[0];
-  imageStream.subscribe(image => {
-    imageElement.src = image;
-  });
-  imageHeightStream.subscribe(height => {
-    imageElement.style.height = `${height}px`;
-  });
+  controlsOpacityStream.subscribe(opacity => (controlsElement.style.opacity = opacity));
+  introOpacityStream.subscribe(opacity => (introElement.style.opacity = opacity));
+  imageStream.subscribe(image => (imageElement.src = image));
+  imageHeightStream.subscribe(height => (imageElement.style.height = `${height}px`));
   imageOpacityStream.subscribe(opacity => (imageElement.style.opacity = opacity));
   imageBlurStream
     .pipe(combineLatest(imageSepiaStream))
     .subscribe(([blur, sepia]) => (imageElement.style.filter = `blur(${blur}px)  sepia(${sepia})`));
 
-  imageOpacityStream.subscribe(x => console.log("Opacity", x));
-  imageBlurStream.subscribe(x => console.log("Blur", x));
+  progressStream.subscribe(x => console.log("Progress", x));
 }

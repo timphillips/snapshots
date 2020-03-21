@@ -14,23 +14,31 @@
   </head>
 
   <body onload="init()">
-    <span class="scroll"></span>
-    <img />
-    <div class="controls">
+    <img id="image" class="image" />
+
+    <div id="intro" class="intro">
+      <p><span class="introTitle">snapshots</span> is an art project that documents my travels around the world</p>
+      <p>
+        scroll to begin...
+      </p>
+      <span class="scroll"></span>
+    </div>
+
+    <div id="controls" class="controls">
       <h1 class="title">snapshots</h1>
       <div class="control">
         <label class="controlLabel" for="zoom">Size</label>
         <br />
-        <input id="zoom" class="slider" type="range" min="20" max="200" />
+        <input id="zoom" class="slider" type="range" min="20" max="200" value="100" />
       </div>
       <div class="control">
         <label class="controlLabel" for="sepia">Sepia</label>
         <br />
         <input id="sepia" class="slider" type="range" min="0" max="10" value="0" />
       </div>
-      <div class="footer">
-        Tim Phillips
-      </div>
+      <!--<div class="footer">
+        <a href="http://www.tim-phillips.com" target="_blank" rel="noopener noreferrer">Tim Phillips</a>
+      </div>-->
     </div>
   </body>
 </html>
