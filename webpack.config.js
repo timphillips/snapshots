@@ -1,4 +1,5 @@
 const path = require("path");
+const CopyPlugin = require("copy-webpack-plugin");
 
 const isProduction = typeof NODE_ENV !== "undefined" && NODE_ENV === "production";
 
@@ -12,9 +13,14 @@ module.exports = {
         test: /\.tsx?$/,
         use: "ts-loader",
         exclude: /node_modules/
+      },
+      {
+        test: /\.css$/,
+        use: ["style-loader", "css-loader"]
       }
     ]
   },
+  plugins: [new CopyPlugin([{ from: "src/index.html", to: "index.html", toType: "file" }])],
   resolve: {
     extensions: [".ts", ".js"]
   },

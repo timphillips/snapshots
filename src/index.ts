@@ -1,21 +1,8 @@
 import { fromEvent, Observable } from "rxjs";
 import { map, filter, scan, startWith, combineLatest, distinctUntilChanged } from "rxjs/operators";
+import { shuffleArray, requireHtmlElement, setOpacity } from "./utils";
 
-/**
- * Returns a new array that contains the elements of the given array in a random order.
- *
- * Sourced from https://stackoverflow.com/a/12646864.
- */
-function shuffleArray<T>(array: T[]): T[] {
-  const a = array.slice();
-
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-
-  return a;
-}
+import "./index.css";
 
 function createProgressStream(scrollStream: Observable<MouseWheelEvent>, progressLimit: number) {
   return scrollStream.pipe(
@@ -202,23 +189,6 @@ function createImageSepiaStream(sepiaStream: Observable<InputEvent>) {
     startWith(0),
     map(sepia => sepia / 10)
   );
-}
-
-function setOpacity(element: HTMLElement, opacity: number) {
-  if (opacity <= 0 && element.style.display !== "none") {
-    element.style.display = "none";
-  } else if (element.style.display === "none") {
-    element.style.display = "inherit";
-  }
-  element.style.opacity = opacity.toString();
-}
-
-function requireHtmlElement(id: string): HTMLElement {
-  const element = window.document.getElementById(id);
-  if (!element) {
-    throw new Error(`Expected to find an element with id ${id}.`);
-  }
-  return element;
 }
 
 function init() {
