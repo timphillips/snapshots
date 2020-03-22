@@ -55,7 +55,7 @@ a:hover {
   user-select: none;
   opacity: 0;
   height: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.1s;
 }
 
 .staging {
