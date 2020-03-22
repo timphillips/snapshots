@@ -2,8 +2,6 @@ import { fromEvent, Observable } from "rxjs";
 import { map, filter, scan, startWith, combineLatest, distinctUntilChanged } from "rxjs/operators";
 import { shuffleArray, requireHtmlElement, setOpacity } from "./utils";
 
-import "./index.css";
-
 function createProgressStream(scrollStream: Observable<MouseWheelEvent>, progressLimit: number) {
   return scrollStream.pipe(
     // are we scrolling up or down?

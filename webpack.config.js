@@ -13,14 +13,15 @@ module.exports = {
         test: /\.tsx?$/,
         use: "ts-loader",
         exclude: /node_modules/
-      },
-      {
-        test: /\.css$/,
-        use: ["style-loader", "css-loader"]
       }
     ]
   },
-  plugins: [new CopyPlugin([{ from: "src/index.html", to: "index.html", toType: "file" }])],
+  plugins: [
+    new CopyPlugin([
+      { from: "src/index.html", to: "index.html" },
+      { from: "src/index.css", to: "index.css" }
+    ])
+  ],
   resolve: {
     extensions: [".ts", ".js"]
   },
