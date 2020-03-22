@@ -48,7 +48,7 @@ a:hover {
 /* Image */
 
 .image {
-  position: absolute;
+  position: fixed;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -56,6 +56,10 @@ a:hover {
   opacity: 0;
   height: 0;
   transition: opacity 0.2s;
+}
+
+.staging {
+  display: none;
 }
 
 /* Controls */
