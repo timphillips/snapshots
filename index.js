@@ -213,14 +213,14 @@ const init = (() => {
 
   function init() {
     const images = shuffleArray([
-      "image1.gif",
-      "image2.gif",
-      "image3.gif",
-      "image4.gif",
-      "image5.gif",
-      "image6.gif",
-      "image7.gif",
-      "image8.gif"
+      "images/image1.gif",
+      "images/image2.gif",
+      "images/image3.gif",
+      "images/image4.gif",
+      "images/image5.gif",
+      "images/image6.gif",
+      "images/image7.gif",
+      "images/image8.gif"
     ]);
 
     // DOM elements
