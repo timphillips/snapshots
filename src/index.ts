@@ -16,14 +16,14 @@ import {
 
 function init() {
   const images = shuffleArray([
-    "images/image1.gif",
-    "images/image2.gif",
-    "images/image3.gif",
-    "images/image4.gif",
-    "images/image5.gif",
-    "images/image6.gif",
-    "images/image7.gif",
-    "images/image8.gif"
+    "snapshots.tim-phillips.com/images/image1.gif",
+    "snapshots.tim-phillips.com/images/image2.gif",
+    "snapshots.tim-phillips.com/images/image3.gif",
+    "snapshots.tim-phillips.com/images/image4.gif",
+    "snapshots.tim-phillips.com/images/image5.gif",
+    "snapshots.tim-phillips.com/images/image6.gif",
+    "snapshots.tim-phillips.com/images/image7.gif",
+    "snapshots.tim-phillips.com/images/image8.gif"
   ]);
 
   // DOM elements

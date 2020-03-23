@@ -1,3 +1,5 @@
+import { cloudImageToken } from "./config";
+
 /**
  * Returns a new array that contains the elements of the given array in a random order.
  *
@@ -29,4 +31,21 @@ export function requireHtmlElement(id: string): HTMLElement {
     throw new Error(`Expected to find an element with id ${id}.`);
   }
   return element;
+}
+
+export function getCloudImageUrl(imageUrl: string, windowHeight: number): string {
+  let imageHeight: number;
+  if (windowHeight < 500) {
+    imageHeight = 500;
+  } else if (windowHeight < 1000) {
+    imageHeight = 1000;
+  } else if (windowHeight < 1500) {
+    imageHeight = 1500;
+  } else if (windowHeight < 2000) {
+    imageHeight = 2000;
+  } else {
+    imageHeight = 2500;
+  }
+
+  return `http://${cloudImageToken}.cloudimg.io/v7/${imageUrl}?h=${imageHeight}`;
 }
