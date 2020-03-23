@@ -38,7 +38,7 @@ function init() {
   // input event streams
   const zoomStream = fromEvent<InputEvent>(zoomElement, "input");
   const sepiaStream = fromEvent<InputEvent>(sepiaElement, "input");
-  const scrollStream = fromEvent<MouseWheelEvent>(window.document, "mousewheel");
+  const scrollStream = fromEvent<MouseWheelEvent>(window.document, "wheel");
 
   // update streams
   const stepsPerImage = 20;
