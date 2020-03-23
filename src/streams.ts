@@ -58,11 +58,20 @@ export function createImageStreams(
     map(imageIndex => (imageIndex < images.length - 1 ? images[imageIndex] : images[images.length - 1]))
   );
 
-  const nextImageStream = imageIndexStream.pipe(
-    map(imageIndex => imageIndex <= images.length && images[imageIndex + 1])
+  const upcomingImagesStream = imageIndexStream.pipe(
+    map(imageIndex => {
+      const upcomingImages = [];
+      for (let i = 0; i <= 3; i++) {
+        if (i + imageIndex >= images.length) {
+          break;
+        }
+        upcomingImages.push(images[i + imageIndex]);
+      }
+      return upcomingImages;
+    })
   );
 
-  return { imageStream, nextImageStream };
+  return { imageStream, upcomingImagesStream };
 }
 
 export function createPercentWithinImageStream(progressStream: Observable<number>, stepsPerImage: number) {

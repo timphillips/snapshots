@@ -13,22 +13,27 @@ import {
   createPercentWithinImageStream,
   createProgressStream
 } from "./streams";
+import { baseImageUrl } from "./config";
 
 function init() {
   const images = shuffleArray([
-    "snapshots.tim-phillips.com/images/image1.gif",
-    "snapshots.tim-phillips.com/images/image2.gif",
-    "snapshots.tim-phillips.com/images/image3.gif",
-    "snapshots.tim-phillips.com/images/image4.gif",
-    "snapshots.tim-phillips.com/images/image5.gif",
-    "snapshots.tim-phillips.com/images/image6.gif",
-    "snapshots.tim-phillips.com/images/image7.gif",
-    "snapshots.tim-phillips.com/images/image8.gif"
+    `${baseImageUrl}/DSC01577.gif`,
+    `${baseImageUrl}/DSC07213.gif`,
+    `${baseImageUrl}/DSC07281.gif`,
+    `${baseImageUrl}/DSC09784.gif`,
+    `${baseImageUrl}/DSC09893.gif`,
+    `${baseImageUrl}/P1040830.gif`,
+    `${baseImageUrl}/P1320569.gif`,
+    `${baseImageUrl}/P1380023.gif`,
+    `${baseImageUrl}/P1420726.gif`,
+    `${baseImageUrl}/P1430273.gif`,
+    `${baseImageUrl}/P1070584.gif`,
+    `${baseImageUrl}/P1080408.gif`,
+    `${baseImageUrl}/P1560191.gif`
   ]);
 
   // DOM elements
   const controlsElement = requireHtmlElement("controls");
-  const stagingElement = requireHtmlElement("staging") as HTMLImageElement;
   const imageElement = requireHtmlElement("image") as HTMLImageElement;
   const introElement = requireHtmlElement("intro");
   const outroElement = requireHtmlElement("outro");
@@ -45,7 +50,7 @@ function init() {
   const progressLimit = stepsPerImage * images.length;
 
   const progressStream = createProgressStream(scrollStream, progressLimit);
-  const { imageStream, nextImageStream } = createImageStreams(progressStream, images, stepsPerImage);
+  const { imageStream, upcomingImagesStream } = createImageStreams(progressStream, images, stepsPerImage);
   const percentWithinImageStream = createPercentWithinImageStream(progressStream, stepsPerImage);
 
   const controlsOpacityStream = createControlsOpacityStream(progressStream);
@@ -62,12 +67,14 @@ function init() {
   introOpacityStream.subscribe(opacity => setOpacity(introElement, opacity));
   outroOpacityStream.subscribe(opacity => setOpacity(outroElement, opacity));
   imageStream.subscribe(image => (imageElement.src = getCloudImageUrl(image, window.innerHeight)));
-  nextImageStream.subscribe(image => image && (stagingElement.src = getCloudImageUrl(image, window.innerHeight)));
   imageHeightStream.subscribe(height => (imageElement.style.height = `${height}px`));
   imageOpacityStream.subscribe(opacity => (imageElement.style.opacity = opacity.toString()));
   imageBlurStream
     .pipe(combineLatest(imageSepiaStream))
     .subscribe(([blur, sepia]) => (imageElement.style.filter = `blur(${blur}px) sepia(${sepia})`));
+  upcomingImagesStream.subscribe(images =>
+    images.forEach(image => (new Image().src = getCloudImageUrl(image, window.innerHeight)))
+  );
 }
 
 window.onload = init;
