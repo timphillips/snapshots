@@ -129,3 +129,13 @@ a:hover {
   text-transform: uppercase;
   letter-spacing: 2px;
 }
+
+.footerSeparator {
+  margin-left: 4px;
+  margin-right: 4px;
+  color: #666;
+}
+
+.footerSource {
+  color: #666;
+}
