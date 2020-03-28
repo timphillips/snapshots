@@ -1,5 +1,5 @@
 import { fromEvent } from "rxjs";
-import { combineLatest } from "rxjs/operators";
+import { combineLatest, switchMap } from "rxjs/operators";
 import { shuffleArray, requireHtmlElement, setOpacity, getCloudImageUrl } from "./utils";
 import {
   createControlsOpacityStream,
@@ -43,13 +43,15 @@ function init() {
   // input event streams
   const zoomStream = fromEvent<InputEvent>(zoomElement, "input");
   const sepiaStream = fromEvent<InputEvent>(sepiaElement, "input");
-  const scrollStream = fromEvent<MouseWheelEvent>(window.document, "wheel");
+  const wheelStream = fromEvent<MouseWheelEvent>(window.document, "wheel"); // desktop browser
+  const touchStartStream = fromEvent<TouchEvent>(window.document, "touchstart");
+  const touchMoveStream = fromEvent<TouchEvent>(window.document, "touchmove");
 
   // update streams
   const stepsPerImage = 20;
   const progressLimit = stepsPerImage * images.length;
 
-  const progressStream = createProgressStream(scrollStream, progressLimit);
+  const progressStream = createProgressStream(touchStartStream, touchMoveStream, wheelStream, progressLimit);
   const { imageStream, upcomingImagesStream } = createImageStreams(progressStream, images, stepsPerImage);
   const percentWithinImageStream = createPercentWithinImageStream(progressStream, stepsPerImage);
 

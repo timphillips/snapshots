@@ -1,10 +1,41 @@
 import { Observable } from "rxjs";
-import { map, filter, scan, startWith, combineLatest, distinctUntilChanged } from "rxjs/operators";
+import {
+  combineLatest,
+  distinctUntilChanged,
+  filter,
+  map,
+  merge,
+  pairwise,
+  scan,
+  startWith,
+  switchMap
+} from "rxjs/operators";
 
-export function createProgressStream(scrollStream: Observable<MouseWheelEvent>, progressLimit: number) {
-  return scrollStream.pipe(
-    // are we scrolling up or down?
-    map(event => ((event.deltaY * -1 || event.detail * -1) > 0 ? -1 : 1)),
+/**
+ * TODO
+ */
+export function createProgressStream(
+  touchStartStream: Observable<TouchEvent>,
+  touchMoveStream: Observable<TouchEvent>,
+  wheelStream: Observable<MouseWheelEvent>,
+  progressLimit: number
+) {
+  const normalizedTouchMoveStream = touchStartStream.pipe(
+    switchMap(() =>
+      touchMoveStream.pipe(
+        filter(event => event.changedTouches.length > 0),
+        map(event => Math.floor(event.changedTouches[0].screenY / 30)),
+        distinctUntilChanged(),
+        pairwise(),
+        map(([previous, current]) => previous - current)
+      )
+    )
+  );
+
+  const normalizedWheelStream = wheelStream.pipe(map(event => ((event.deltaY * -1 || event.detail * -1) > 0 ? -1 : 1)));
+
+  return normalizedWheelStream.pipe(
+    merge(normalizedTouchMoveStream),
     scan((progress, adjustment) => {
       const newProgress = progress + adjustment;
       return newProgress < 0 ? 0 : newProgress > progressLimit ? progress : newProgress;
