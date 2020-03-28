@@ -13,24 +13,11 @@ import {
   createPercentWithinImageStream,
   createProgressStream
 } from "./streams";
-import { baseImageUrl } from "./config";
+
+import { images } from "./images.json";
 
 function init() {
-  const images = shuffleArray([
-    `${baseImageUrl}/DSC01577.gif`,
-    `${baseImageUrl}/DSC07213.gif`,
-    `${baseImageUrl}/DSC07281.gif`,
-    `${baseImageUrl}/DSC09784.gif`,
-    `${baseImageUrl}/DSC09893.gif`,
-    `${baseImageUrl}/P1040830.gif`,
-    `${baseImageUrl}/P1320569.gif`,
-    `${baseImageUrl}/P1380023.gif`,
-    `${baseImageUrl}/P1420726.gif`,
-    `${baseImageUrl}/P1430273.gif`,
-    `${baseImageUrl}/P1070584.gif`,
-    `${baseImageUrl}/P1080408.gif`,
-    `${baseImageUrl}/P1560191.gif`
-  ]);
+  const shuffledImages = shuffleArray(images).map(image => image.src);
 
   // DOM elements
   const controlsElement = requireHtmlElement("controls");
@@ -49,13 +36,13 @@ function init() {
 
   // update streams
   const stepsPerImage = 20;
-  const progressLimit = stepsPerImage * images.length;
+  const progressLimit = stepsPerImage * shuffledImages.length;
 
   const progressStream = createProgressStream(touchStartStream, touchMoveStream, wheelStream, progressLimit);
-  const { imageStream, upcomingImagesStream } = createImageStreams(progressStream, images, stepsPerImage);
+  const { imageStream, upcomingImagesStream } = createImageStreams(progressStream, shuffledImages, stepsPerImage);
   const percentWithinImageStream = createPercentWithinImageStream(progressStream, stepsPerImage);
 
-  const controlsOpacityStream = createControlsOpacityStream(progressStream);
+  const controlsOpacityStream = createControlsOpacityStream(progressStream, progressLimit);
   const introOpacityStream = createIntroOpacityStream(progressStream);
   const outroOpacityStream = createOutroOpacityStream(progressStream, progressLimit);
 

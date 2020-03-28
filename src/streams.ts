@@ -45,15 +45,22 @@ export function createProgressStream(
   );
 }
 
-export function createControlsOpacityStream(progressStream: Observable<number>): Observable<number> {
+export function createControlsOpacityStream(
+  progressStream: Observable<number>,
+  progressLimit: number
+): Observable<number> {
   return progressStream.pipe(
     map(progress => {
+      if (progress > progressLimit) {
+        return 0;
+      }
       if (progress > 8) {
         return 1;
       }
       if (progress < 3) {
         return 0;
       }
+
       return (progress - 3) / 5;
     }),
     distinctUntilChanged()
