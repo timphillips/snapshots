@@ -17,7 +17,7 @@ import {
 import { images } from "./images.json";
 
 function init() {
-  const shuffledImages = shuffleArray(images).map(image => image.src);
+  const shuffledImages = shuffleArray(images);
 
   // DOM elements
   const controlsElement = requireHtmlElement("controls");
@@ -55,14 +55,17 @@ function init() {
   controlsOpacityStream.subscribe(opacity => setOpacity(controlsElement, opacity));
   introOpacityStream.subscribe(opacity => setOpacity(introElement, opacity));
   outroOpacityStream.subscribe(opacity => setOpacity(outroElement, opacity));
-  imageStream.subscribe(image => (imageElement.src = getCloudImageUrl(image, window.innerHeight)));
+  imageStream.subscribe(image => {
+    imageElement.src = getCloudImageUrl(image.src, window.innerHeight);
+    imageElement.alt = image.alt;
+  });
   imageHeightStream.subscribe(height => (imageElement.style.height = `${height}px`));
   imageOpacityStream.subscribe(opacity => (imageElement.style.opacity = opacity.toString()));
   imageBlurStream
     .pipe(combineLatest(imageSepiaStream))
     .subscribe(([blur, sepia]) => (imageElement.style.filter = `blur(${blur}px) sepia(${sepia})`));
   upcomingImagesStream.subscribe(images =>
-    images.forEach(image => (new Image().src = getCloudImageUrl(image, window.innerHeight)))
+    images.forEach(image => (new Image().src = getCloudImageUrl(image.src, window.innerHeight)))
   );
 }
 
