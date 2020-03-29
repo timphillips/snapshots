@@ -20,7 +20,7 @@ export function setOpacity(element: HTMLElement, opacity: number) {
   if (opacity <= 0 && element.style.display !== "none") {
     element.style.display = "none";
   } else if (element.style.display === "none") {
-    element.style.display = "inherit";
+    element.style.display = "";
   }
   element.style.opacity = opacity.toString();
 }

@@ -54,24 +54,10 @@ a:hover {
   transform: translate(-50%, -50%);
   user-select: none;
   opacity: 0;
-  height: 0;
   transition: opacity 0.1s;
 }
 
-.staging {
-  display: none;
-}
-
 /* Controls */
-
-.controlsTitle {
-  font-size: 20px;
-  line-height: 20px;
-  text-align: center;
-  margin: 0;
-  padding: 0;
-  font-family: "Nova Cut", cursive;
-}
 
 .controls {
   position: fixed;
@@ -80,6 +66,15 @@ a:hover {
   background-color: rgb(0, 0, 0, 0.7);
   opacity: 0;
   transition: opacity 0.1s linear;
+}
+
+.controlsTitle {
+  font-size: 20px;
+  line-height: 20px;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+  font-family: "Nova Cut", cursive;
 }
 
 .control {
@@ -118,13 +113,37 @@ a:hover {
   cursor: pointer;
 }
 
+@media screen and (max-width: 600px) {
+  .controls {
+    display: flex;
+    justify-content: space-between;
+    margin: 10px 10px 0 10px;
+    left: 0;
+    right: 0;
+  }
+
+  .control {
+    margin-top: 0;
+    display: flex;
+    line-height: 20px;
+    margin-right: 10px;
+  }
+
+  .controlLabel {
+    margin-right: 5px;
+  }
+}
+
+/* Footer */
+
 .footer {
-  position: absolute;
+  position: fixed;
   bottom: 0;
   left: 0;
   margin: 10px;
   padding: 10px;
 
+  background-color: rgb(0, 0, 0, 0.7);
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 2px;
