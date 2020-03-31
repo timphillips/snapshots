@@ -1,50 +1,110 @@
-import { Observable } from "rxjs";
+import { Observable, of, range, interval, pipe } from "rxjs";
 import {
   combineLatest,
   distinctUntilChanged,
   filter,
   map,
+  mapTo,
   merge,
-  pairwise,
   scan,
   startWith,
-  switchMap
+  switchMap,
+  takeLast,
+  takeUntil,
+  tap,
+  take,
+  share
 } from "rxjs/operators";
 
-/**
- * TODO
- */
-export function createProgressStream(
+interface Image {
+  readonly alt: string;
+  readonly src: string;
+}
+
+export function createSwipeStream(
   touchStartStream: Observable<TouchEvent>,
   touchMoveStream: Observable<TouchEvent>,
-  wheelStream: Observable<MouseWheelEvent>,
-  progressLimit: number
-) {
-  const normalizedTouchMoveStream = touchStartStream.pipe(
-    switchMap(() =>
+  touchEndStream: Observable<TouchEvent>
+): Observable<"swipeUp" | "swipeDown"> {
+  const tolerance = 100; // swipe distance in pixels
+  // Switch to listen to touchmove to determine position
+  return touchStartStream.pipe(
+    switchMap(startEvent =>
       touchMoveStream.pipe(
-        filter(event => event.changedTouches.length > 0),
-        map(event => Math.floor(event.changedTouches[0].screenY / 30)),
-        distinctUntilChanged(),
-        pairwise(),
-        map(([previous, current]) => previous - current)
+        // Listen until "touchend" is fired
+        takeUntil(touchEndStream),
+        // Output the pageX location
+        map(event => event.touches[0].pageY),
+        // Accumulate the pageX difference from the start of the touch
+        scan((_, pageY) => Math.round(startEvent.touches[0].pageY - pageY), 0),
+        // Take the last output and filter it to output only swipes
+        // greater than the defined tolerance
+        takeLast(1),
+        filter(difference => Math.abs(difference) >= tolerance),
+        map(difference => (difference >= tolerance ? "swipeUp" : "swipeDown"))
       )
     )
   );
+}
 
-  const normalizedWheelStream = wheelStream.pipe(map(event => ((event.deltaY * -1 || event.detail * -1) > 0 ? -1 : 1)));
+/**
+ * Converts the given streams of wheel/touch events to a number representing
+ * the virtual scroll progress on the page.
+ *
+ * The progress starts at 0 (the top of the page), increases as the user
+ * scrolls down, and decreases as the user scrolls up.
+ *
+ * @returns A stream indicating the virtual scroll progress on the page.
+ */
+export function createProgressStream(
+  mouseMoveStream: Observable<MouseEvent>,
+  touchStartStream: Observable<TouchEvent>,
+  touchMoveStream: Observable<TouchEvent>,
+  touchEndStream: Observable<TouchEvent>,
+  wheelStream: Observable<MouseWheelEvent>,
+  progressLimit: number
+) {
+  const swipeStream = createSwipeStream(touchStartStream, touchMoveStream, touchEndStream);
 
-  return normalizedWheelStream.pipe(
-    merge(normalizedTouchMoveStream),
+  const normalizedWheelStream = wheelStream.pipe(
+    // are we scrolling up or down?
+    map(event => ((event.deltaY * -1 || event.detail * -1) > 0 ? "scrollDown" : "scrollUp"))
+  );
+
+  const combinedEventsStream = normalizedWheelStream.pipe(merge(swipeStream));
+
+  return combinedEventsStream.pipe(
+    switchMap(change => {
+      if (change === "scrollDown") {
+        return of(-1);
+      }
+      if (change === "scrollUp") {
+        return of(1);
+      }
+      if (change === "swipeDown") {
+        return interval(40).pipe(take(20), mapTo(1));
+      }
+      if (change === "swipeUp") {
+        return interval(30).pipe(take(20), mapTo(-1));
+      }
+      return of(0);
+    }),
     scan((progress, adjustment) => {
-      const newProgress = progress + adjustment;
-      return newProgress < 0 ? 0 : newProgress > progressLimit ? progress : newProgress;
+      console.log((progress - 10) / 20);
+      return progress + adjustment;
     }, 0),
     startWith(0),
-    distinctUntilChanged()
+    distinctUntilChanged(),
+    share()
   );
 }
 
+/**
+ * Fades in the control panel when the initial image fades in.
+ * Hides the control panel once the end is reached.
+ *
+ * @returns A stream emitting the opacity of the controls panel.
+ */
 export function createControlsOpacityStream(
   progressStream: Observable<number>,
   progressLimit: number
@@ -67,13 +127,20 @@ export function createControlsOpacityStream(
   );
 }
 
+/**
+ * Fades out the into panel on the initial scroll.
+ *
+ * @returns A stream emitting the opacity of the intro panel.
+ */
 export function createIntroOpacityStream(progressStream: Observable<number>) {
-  return progressStream.pipe(
-    filter(progress => progress <= 5),
-    map(progress => (progress === 0 ? 1 : 1 - (progress / 5) * 2))
-  );
+  return progressStream.pipe(map(progress => (progress === 0 ? 1 : 1 - (progress / 5) * 2)));
 }
 
+/**
+ * Fades in the outro panel once the end is reached.
+ *
+ * @returns A stream emitting opacity of the outro panel.
+ */
 export function createOutroOpacityStream(progressStream: Observable<number>, progressLimit: number) {
   return progressStream.pipe(
     map(progress => (progress === progressLimit ? 1 : 0)),
@@ -82,9 +149,15 @@ export function createOutroOpacityStream(progressStream: Observable<number>, pro
   );
 }
 
+/**
+ * Determines which image is visible (and which images are upcoming) based
+ * on the virual scroll progress.
+ *
+ * @returns A stream emitting the current image, and a stream emitting the upcoming images.
+ */
 export function createImageStreams(
   progressStream: Observable<number>,
-  images: readonly string[],
+  images: readonly Image[],
   stepsPerImage: number
 ) {
   const imageIndexStream = progressStream.pipe(
@@ -112,15 +185,26 @@ export function createImageStreams(
   return { imageStream, upcomingImagesStream };
 }
 
+/**
+ * Determines the percentage that the user has progressed through the current image.
+ *
+ * @returns A stream emitting the current
+ */
 export function createPercentWithinImageStream(progressStream: Observable<number>, stepsPerImage: number) {
   return progressStream.pipe(
     map(progress => {
+      // TODO: Review this?
       const imageIndex = Math.floor(progress / stepsPerImage);
       return ((progress - imageIndex * stepsPerImage) / stepsPerImage) * 100;
     })
   );
 }
 
+/**
+ * Fades the image in and out.
+ *
+ * @returns A stream emitting the opacity of the image.
+ */
 export function createImageOpacityStream(
   progressStream: Observable<number>,
   percentWithinImageStream: Observable<number>,
@@ -173,9 +257,15 @@ export function createImageOpacityStream(
   );
 }
 
+/**
+ * Blurs the image slightly as it is fading in or out.
+ *
+ * @returns A stream emitting the blur filter value for the image.
+ */
 export function createImageBlurStream(percentWithinImageStream: Observable<number>) {
   return percentWithinImageStream.pipe(
     map(percent => {
+      // TODO: remove magic strings
       if (percent < 10) {
         return 5;
       }
@@ -213,13 +303,32 @@ export function createImageBlurStream(percentWithinImageStream: Observable<numbe
   );
 }
 
+/**
+ * Converts sepia range input events to image sepia filter values.
+ *
+ * @returns A stream emitting the speia filter value for the image.
+ */
+export function createImageSepiaStream(sepiaStream: Observable<InputEvent>) {
+  return sepiaStream.pipe(
+    map(event => Number((event.target as HTMLInputElement).value)),
+    startWith(0),
+    map(sepia => sepia / 10)
+  );
+}
+
+/**
+ * Converts image size input events to image height values.
+ * Also adjusts the image height slightly when the image is faded in or out.
+ *
+ * @returns A stream emitting the height of the current image.
+ */
 export function createImageHeightStream(
   percentWithinImageStream: Observable<number>,
   zoomStream: Observable<InputEvent>
 ) {
   return zoomStream.pipe(
     map(event => Number((event.target as HTMLInputElement).value)),
-    startWith(100),
+    startWith(100), // start with full size
     combineLatest<number, number>(percentWithinImageStream),
     map(([zoom, percentWithinImage]) => {
       const baseHeight = window.innerHeight * ((zoom / 100) * 0.9);
@@ -231,13 +340,5 @@ export function createImageHeightStream(
       }
       return baseHeight;
     })
-  );
-}
-
-export function createImageSepiaStream(sepiaStream: Observable<InputEvent>) {
-  return sepiaStream.pipe(
-    map(event => Number((event.target as HTMLInputElement).value)),
-    startWith(0),
-    map(sepia => sepia / 10)
   );
 }

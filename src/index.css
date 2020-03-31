@@ -47,14 +47,38 @@ a:hover {
 
 /* Image */
 
+.imageContainer {
+  position: fixed;
+  /*opacity: 0;
+  transition: opacity 0.1s;*/
+}
+
 .image {
   position: fixed;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
   user-select: none;
-  opacity: 0;
-  transition: opacity 0.1s;
+  /*transition: all 0.1s;*/
+}
+
+.imageCaption {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  margin: 10px;
+  padding: 10px;
+
+  background-color: rgb(0, 0, 0, 0.7);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #666;
+  transition: color 0.2s;
+}
+
+.imageCaption:hover {
+  color: white;
 }
 
 /* Controls */
@@ -71,7 +95,6 @@ a:hover {
 .controlsTitle {
   font-size: 20px;
   line-height: 20px;
-  text-align: center;
   margin: 0;
   padding: 0;
   font-family: "Nova Cut", cursive;
@@ -157,4 +180,8 @@ a:hover {
 
 .footerSource {
   color: #666;
+}
+
+.arrow {
+  position: fixed;
 }

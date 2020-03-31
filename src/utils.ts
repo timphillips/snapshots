@@ -1,7 +1,7 @@
 import { cloudImageToken } from "./config";
 
 /**
- * Returns a new array that contains the elements of the given array in a random order.
+ * Returns a new array that contains the elements of the input array in a random order.
  *
  * Sourced from https://stackoverflow.com/a/12646864.
  */
@@ -16,6 +16,20 @@ export function shuffleArray<T>(array: T[]): T[] {
   return a;
 }
 
+/**
+ * Sets the filter CSS property of the given element.
+ */
+export function setFilter(element: HTMLElement, { blur, sepia }: { blur?: number; sepia?: number }) {
+  const blurValue = typeof blur === "number" ? `blur(${blur}px)` : undefined;
+  const sepiaValue = typeof sepia === "number" ? `sepia(${sepia})` : undefined;
+
+  element.style.filter = [blurValue, sepiaValue].filter(Boolean).join(", ");
+}
+
+/**
+ * Sets the opacity of the given element.
+ * Hides the element entirely if the opacity is 0.
+ */
 export function setOpacity(element: HTMLElement, opacity: number) {
   if (opacity <= 0 && element.style.display !== "none") {
     element.style.display = "none";
@@ -25,6 +39,11 @@ export function setOpacity(element: HTMLElement, opacity: number) {
   element.style.opacity = opacity.toString();
 }
 
+/**
+ * Finds an HTML element with the given ID.
+ *
+ * @throws if the element is not found.
+ */
 export function requireHtmlElement(id: string): HTMLElement {
   const element = window.document.getElementById(id);
   if (!element) {
@@ -33,6 +52,11 @@ export function requireHtmlElement(id: string): HTMLElement {
   return element;
 }
 
+/**
+ * Gets a CloudImage URL for the given
+ *
+ * CloudImage
+ */
 export function getCloudImageUrl(imageUrl: string, windowHeight: number): string {
   let imageHeight: number;
   if (windowHeight < 500) {

@@ -13,7 +13,13 @@
   </head>
 
   <body>
-    <img id="image" class="image" />
+    <figure id="imageContainer" class="imageContainer">
+      <img draggable="false" id="image" class="image" />
+      <figcaption id="imageCaption" class="imageCaption"></figcaption>
+    </figure>
+
+    <div id="next" class="arrow">Next</div>
+    <div id="previous" class="arrow" style="top:100px">Previous</div>
 
     <div id="outro" class="blurb outro">
       <p class="blurbTitle">end</p>
@@ -21,10 +27,10 @@
     </div>
 
     <div id="intro" class="blurb">
-      <p><span class="blurbTitle">snapshots</span> is an art project that documents my travels around the world</p>
+      <!--<p><span class="blurbTitle">snapshots</span> is an art project that documents my travels around the world</p>
       <p>
-        scroll to begin...
-      </p>
+        click to begin...
+      </p>-->
     </div>
 
     <div id="controls" class="controls">
@@ -42,7 +48,7 @@
     </div>
 
     <div class="footer">
-      <a href="http://www.tim-phillips.com" target="_blank" rel="noopener noreferrer">Tim Phillips</a>
+      <span>By <a href="http://www.tim-phillips.com" target="_blank" rel="noopener noreferrer">Tim Phillips</a></span>
       <span class="footerSeparator">/</span>
       <a href="https://github.com/timphillips/snapshots" target="_blank" rel="noopener noreferrer" class="footerSource">
         Source
