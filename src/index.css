@@ -59,7 +59,7 @@ a:hover {
   top: 50%;
   transform: translate(-50%, -50%);
   user-select: none;
-  /*transition: all 0.1s;*/
+  /* transition: opacity 0.1s; */
 }
 
 .imageCaption {
@@ -101,19 +101,22 @@ a:hover {
 }
 
 .control {
-  margin-top: 10px;
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
 }
 
 .controlLabel {
   text-transform: uppercase;
   font-size: 9px;
   letter-spacing: 2px;
+  margin-bottom: 5px;
 }
 
 .slider {
   -webkit-appearance: none;
   margin: 0;
-  width: 100px;
+  width: 95px;
   height: 15px;
   background: transparent;
   outline: none;
@@ -182,6 +185,38 @@ a:hover {
   color: #666;
 }
 
-.arrow {
+.arrowControl {
   position: fixed;
+  top: calc(50% - 10px);
+  cursor: pointer;
+  background-color: rgb(0, 0, 0, 0.7);
+  padding: 10px;
+  width: 20px;
+  height: 20px;
+  opacity: 0;
+}
+
+.arrowControl--left {
+  left: 15px;
+}
+
+.arrowControl--right {
+  right: 15px;
+}
+
+.arrow {
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  display: inline-block;
+  padding: 8px;
+}
+
+.arrow--left {
+  transform: rotate(135deg);
+  -webkit-transform: rotate(135deg);
+}
+
+.arrow--right {
+  transform: rotate(-45deg);
+  -webkit-transform: rotate(-45deg);
 }

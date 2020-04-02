@@ -17,17 +17,31 @@ export function shuffleArray<T>(array: T[]): T[] {
 }
 
 /**
+ * Sets the height of the given element.
+ */
+export function setHeight(element: HTMLElement, height: number) {
+  const heightString = `${height}px`;
+  if (element.style.height !== heightString) {
+    element.style.height = heightString;
+  }
+}
+
+/**
  * Sets the filter CSS property of the given element.
  */
 export function setFilter(element: HTMLElement, { blur, sepia }: { blur?: number; sepia?: number }) {
   const blurValue = typeof blur === "number" ? `blur(${blur}px)` : undefined;
   const sepiaValue = typeof sepia === "number" ? `sepia(${sepia})` : undefined;
 
-  element.style.filter = [blurValue, sepiaValue].filter(Boolean).join(", ");
+  const filterString = [blurValue, sepiaValue].filter(Boolean).join(" ");
+  if (element.style.filter !== filterString) {
+    element.style.filter = filterString;
+  }
 }
 
 /**
  * Sets the opacity of the given element.
+ *
  * Hides the element entirely if the opacity is 0.
  */
 export function setOpacity(element: HTMLElement, opacity: number) {
@@ -36,7 +50,10 @@ export function setOpacity(element: HTMLElement, opacity: number) {
   } else if (element.style.display === "none") {
     element.style.display = "";
   }
-  element.style.opacity = opacity.toString();
+  const opacityString = opacity.toString();
+  if (element.style.opacity !== opacityString) {
+    element.style.opacity = opacityString;
+  }
 }
 
 /**
@@ -53,9 +70,7 @@ export function requireHtmlElement(id: string): HTMLElement {
 }
 
 /**
- * Gets a CloudImage URL for the given
- *
- * CloudImage
+ * Gets a CloudImage URL for the given source URL.
  */
 export function getCloudImageUrl(imageUrl: string, windowHeight: number): string {
   let imageHeight: number;

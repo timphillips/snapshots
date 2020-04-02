@@ -18,33 +18,39 @@
       <figcaption id="imageCaption" class="imageCaption"></figcaption>
     </figure>
 
-    <div id="next" class="arrow">Next</div>
-    <div id="previous" class="arrow" style="top:100px">Previous</div>
-
     <div id="outro" class="blurb outro">
       <p class="blurbTitle">end</p>
       <p>Made by <a href="http://www.tim-phillips.com" target="_blank" rel="noopener noreferrer">Tim Phillips</a></p>
     </div>
 
     <div id="intro" class="blurb">
-      <!--<p><span class="blurbTitle">snapshots</span> is an art project that documents my travels around the world</p>
+      <p><span class="blurbTitle">snapshots</span> is an art project that documents my travels around the world</p>
       <p>
         click to begin...
-      </p>-->
+      </p>
     </div>
 
     <div id="controls" class="controls">
       <h1 class="controlsTitle">snapshots</h1>
       <div class="control">
         <label class="controlLabel" for="zoom">Size</label>
-        <br />
         <input id="zoom" class="slider" type="range" min="20" max="200" value="100" />
       </div>
       <div class="control">
         <label class="controlLabel" for="sepia">Sepia</label>
-        <br />
         <input id="sepia" class="slider" type="range" min="0" max="10" value="0" />
       </div>
+      <div class="control">
+        <label class="controlLabel" for="blur">Blur</label>
+        <input id="blur" class="slider" type="range" min="0" max="5" value="1" />
+      </div>
+    </div>
+
+    <div id="previous" class="arrowControl arrowControl--left">
+      <div class="arrow arrow--left"></div>
+    </div>
+    <div id="next" class="arrowControl arrowControl--right">
+      <div class="arrow arrow--right"></div>
     </div>
 
     <div class="footer">

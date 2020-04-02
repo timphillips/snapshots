@@ -258,52 +258,6 @@ export function createImageOpacityStream(
 }
 
 /**
- * Blurs the image slightly as it is fading in or out.
- *
- * @returns A stream emitting the blur filter value for the image.
- */
-export function createImageBlurStream(percentWithinImageStream: Observable<number>) {
-  return percentWithinImageStream.pipe(
-    map(percent => {
-      // TODO: remove magic strings
-      if (percent < 10) {
-        return 5;
-      }
-      if (percent >= 10 && percent < 15) {
-        return 4;
-      }
-      if (percent >= 15 && percent < 20) {
-        return 3;
-      }
-      if (percent >= 20 && percent < 25) {
-        return 2;
-      }
-      if (percent >= 25 && percent < 30) {
-        return 1;
-      }
-
-      if (percent >= 75 && percent < 80) {
-        return 1;
-      }
-      if (percent >= 80 && percent < 85) {
-        return 2;
-      }
-      if (percent >= 85 && percent < 90) {
-        return 3;
-      }
-      if (percent >= 90 && percent < 95) {
-        return 4;
-      }
-      if (percent >= 95) {
-        return 5;
-      }
-      return 0;
-    }),
-    distinctUntilChanged()
-  );
-}
-
-/**
  * Converts sepia range input events to image sepia filter values.
  *
  * @returns A stream emitting the speia filter value for the image.
@@ -322,23 +276,22 @@ export function createImageSepiaStream(sepiaStream: Observable<InputEvent>) {
  *
  * @returns A stream emitting the height of the current image.
  */
-export function createImageHeightStream(
-  percentWithinImageStream: Observable<number>,
-  zoomStream: Observable<InputEvent>
-) {
+export function createImageHeightStream(zoomStream: Observable<InputEvent>) {
   return zoomStream.pipe(
     map(event => Number((event.target as HTMLInputElement).value)),
     startWith(100), // start with full size
-    combineLatest<number, number>(percentWithinImageStream),
-    map(([zoom, percentWithinImage]) => {
-      const baseHeight = window.innerHeight * ((zoom / 100) * 0.9);
-      if (percentWithinImage <= 25) {
-        return baseHeight - ((25 - percentWithinImage) * zoom) / 200;
-      }
-      if (percentWithinImage > 75) {
-        return baseHeight + ((75 - percentWithinImage) * zoom) / 200;
-      }
-      return baseHeight;
-    })
+    map(zoom => window.innerHeight * ((zoom / 100) * 0.9))
+  );
+}
+
+/**
+ * TODO
+ *
+ * @returns TODO
+ */
+export function createImageBlurStream(blurStream: Observable<InputEvent>) {
+  return blurStream.pipe(
+    map(event => Number((event.target as HTMLInputElement).value)),
+    startWith(1)
   );
 }
