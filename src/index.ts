@@ -8,10 +8,20 @@ import {
   createImageStreams,
   createImageTransitionStream,
   createIntroOpacityStream,
-  createOutroOpacityStream
+  createNextButtonActiveStream,
+  createOutroOpacityStream,
+  createPreviousButtonActiveStream
 } from "./streams";
 import { debounceTime, filter, mapTo, take } from "rxjs/operators";
-import { getCloudImageUrl, requireHtmlElement, setFilter, setHeight, setOpacity, shuffleArray } from "./utils";
+import {
+  getCloudImageUrl,
+  requireHtmlElement,
+  setFilter,
+  setHeight,
+  setOpacity,
+  shuffleArray,
+  toggleCssClass
+} from "./utils";
 
 import { images } from "./images.json";
 
@@ -43,7 +53,7 @@ function init() {
   const zoomStream = fromEvent<InputEvent>(zoomElement, "input");
 
   // update streams
-  const activateStream = merge(clickStream).pipe(take(1));
+  const activateStream = clickStream.pipe(take(1));
   const leftArrowStream = keyUpStream.pipe(filter(key => key.keyCode === 37));
   const rightArrowStream = keyUpStream.pipe(filter(key => key.keyCode === 39));
 
@@ -59,6 +69,8 @@ function init() {
   const imageSepiaStream = createImageSepiaStream(sepiaStream);
 
   const controlsOpacityStream = createControlsOpacityStream(activateStream);
+  const nextButtonActiveStream = createNextButtonActiveStream(imageIndexStream);
+  const previousButtonActiveStream = createPreviousButtonActiveStream(imageIndexStream);
   const outroOpacityStream = createOutroOpacityStream(imageIndexStream);
   const introOpacityStream = createIntroOpacityStream(activateStream);
 
@@ -68,27 +80,30 @@ function init() {
       new Image().src = getCloudImageUrl(image, window.innerHeight);
     }
   });
-
   combineLatest(imageTransitionStream, imageBlurStream, imageHeightStream, imageSepiaStream)
     .pipe(debounceTime(10))
     .subscribe(([{ transition, image }, blur, height, sepia]) => {
       if (image) {
         imageElement.src = getCloudImageUrl(image.src, window.innerHeight);
-        imageElement.alt = image.alt;
-        imageCaptionElement.innerText = image.alt;
       }
+      imageElement.alt = image?.alt || "";
+      imageCaptionElement.innerText = image?.alt || "";
       setHeight(imageElement, height + (transition.size || 0));
       setOpacity(imageElement, transition.opacity);
       setFilter(imageElement, { blur: transition.blur + blur, sepia });
     });
 
-  controlsOpacityStream.subscribe(opacity => {
-    setOpacity(controlsElement, opacity);
-    setOpacity(nextElement, opacity);
-    setOpacity(previousElement, opacity);
-  });
+  controlsOpacityStream.subscribe(opacity => setOpacity(controlsElement, opacity));
   introOpacityStream.subscribe(opacity => setOpacity(introElement, opacity));
   outroOpacityStream.subscribe(opacity => setOpacity(outroElement, opacity));
+  combineLatest(controlsOpacityStream, nextButtonActiveStream).subscribe(([opacity, isActive]) => {
+    setOpacity(nextElement, opacity);
+    toggleCssClass(nextElement, "arrowControl--active", isActive);
+  });
+  combineLatest(controlsOpacityStream, previousButtonActiveStream).subscribe(([opacity, isActive]) => {
+    setOpacity(previousElement, opacity);
+    toggleCssClass(previousElement, "arrowControl--active", isActive);
+  });
 }
 
 window.onload = init;

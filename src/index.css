@@ -188,27 +188,39 @@ a:hover {
 .arrowControl {
   position: fixed;
   top: calc(50% - 10px);
-  cursor: pointer;
-  background-color: rgb(0, 0, 0, 0.7);
-  padding: 10px;
+  background-color: rgb(0, 0, 0, 0.2);
+  padding: 15px 5px 15px 13px;
   width: 20px;
   height: 20px;
   opacity: 0;
 }
 
 .arrowControl--left {
-  left: 15px;
+  left: 10px;
 }
 
 .arrowControl--right {
   right: 15px;
 }
 
+.arrowControl--active {
+  cursor: pointer;
+  background-color: rgb(0, 0, 0, 0.7);
+}
+
+.arrowControl--active > .arrow {
+  border-color: white;
+}
+
+.arrowControl--active:hover > .arrow {
+  border-width: 0 3px 3px 0;
+}
+
 .arrow {
-  border: solid white;
+  border: solid #333;
   border-width: 0 2px 2px 0;
   display: inline-block;
-  padding: 8px;
+  padding: 10px;
 }
 
 .arrow--left {

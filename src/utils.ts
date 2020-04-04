@@ -57,6 +57,19 @@ export function setOpacity(element: HTMLElement, opacity: number) {
 }
 
 /**
+ * Sets the opacity of the given element.
+ *
+ * Hides the element entirely if the opacity is 0.
+ */
+export function toggleCssClass(element: HTMLElement, className: string, active: boolean) {
+  if (element.classList.contains(className) && !active) {
+    element.classList.toggle(className, false);
+  } else if (!element.classList.contains(className) && active) {
+    element.classList.toggle(className, true);
+  }
+}
+
+/**
  * Finds an HTML element with the given ID.
  *
  * @throws if the element is not found.
@@ -86,5 +99,5 @@ export function getCloudImageUrl(imageUrl: string, windowHeight: number): string
     imageHeight = 2500;
   }
 
-  return `http://${cloudImageToken}.cloudimg.io/v7/${imageUrl}?h=${imageHeight}`;
+  return `https://${cloudImageToken}.cloudimg.io/v7/${imageUrl}?h=${imageHeight}`;
 }

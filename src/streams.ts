@@ -26,16 +26,25 @@ interface ImageState {
   readonly size?: number;
 }
 
+/**
+ * Image state when the intro panel is visible.
+ */
 const imageIntroState: ImageState = {
   opacity: 0.2,
   blur: 10
 };
 
+/**
+ * Image state when the outro panel is visible.
+ */
 const imageOutroState: ImageState = {
   opacity: 0,
   blur: 0
 };
 
+/**
+ * Keyframes for fading in an image from the intro state.
+ */
 const imageIntroFadeIn: ImageState[] = [
   { opacity: 0.3, blur: 10, size: -10 },
   { opacity: 0.4, blur: 10, size: -10 },
@@ -48,19 +57,9 @@ const imageIntroFadeIn: ImageState[] = [
   { opacity: 1.0, blur: 0 }
 ];
 
-const imageFadeOut: ImageState[] = [
-  { opacity: 0.9, blur: 0, size: 0 },
-  { opacity: 0.8, blur: 5, size: -2 },
-  { opacity: 0.7, blur: 10, size: -3 },
-  { opacity: 0.6, blur: 15, size: -4 },
-  { opacity: 0.5, blur: 20, size: -5 },
-  { opacity: 0.4, blur: 25, size: -6 },
-  { opacity: 0.3, blur: 30, size: -7 },
-  { opacity: 0.2, blur: 35, size: -8 },
-  { opacity: 0.1, blur: 40, size: -9 },
-  { opacity: 0.0, blur: 45, size: -10 }
-];
-
+/**
+ * Keyframes for fading in an image with a blur effect.
+ */
 const imageFadeIn: ImageState[] = [
   { opacity: 0.1, blur: 45, size: -10 },
   { opacity: 0.2, blur: 40, size: -9 },
@@ -74,6 +73,29 @@ const imageFadeIn: ImageState[] = [
   { opacity: 1.0, blur: 0, size: 0 }
 ];
 
+/**
+ * Keyframes for fading out an image with a blur effect.
+ */
+const imageFadeOut: ImageState[] = [
+  { opacity: 0.9, blur: 0, size: 0 },
+  { opacity: 0.8, blur: 5, size: -2 },
+  { opacity: 0.7, blur: 10, size: -3 },
+  { opacity: 0.6, blur: 15, size: -4 },
+  { opacity: 0.5, blur: 20, size: -5 },
+  { opacity: 0.4, blur: 25, size: -6 },
+  { opacity: 0.3, blur: 30, size: -7 },
+  { opacity: 0.2, blur: 35, size: -8 },
+  { opacity: 0.1, blur: 40, size: -9 },
+  { opacity: 0.0, blur: 45, size: -10 }
+];
+
+/**
+ * Loads an image without actually including it in the DOM.
+ *
+ * This is used totrigger preloading images before they need to be displayed.
+ *
+ * @returns A stream that emits when the image is loaded.
+ */
 function loadImage(imagePath: string): Observable<HTMLImageElement> {
   return Observable.create((observer: Observer<HTMLImageElement>) => {
     var image = new Image();
@@ -89,8 +111,6 @@ function loadImage(imagePath: string): Observable<HTMLImageElement> {
 /**
  * Fades in the control panel when the initial image fades in.
  *
- * Hides the control panel once the end is reached.
- *
  * @returns A stream emitting the opacity of the controls panel.
  */
 export function createControlsOpacityStream(activateStream: Observable<MouseEvent>): Observable<number> {
@@ -101,7 +121,27 @@ export function createControlsOpacityStream(activateStream: Observable<MouseEven
 }
 
 /**
- * Fades out the into panel on the initial scroll.
+ * Determines if the "Next" button should be active or not.
+ *
+ * @returns A stream emitting if the "Next" button is active.
+ */
+export function createNextButtonActiveStream(imageIndexStream: Observable<number | undefined>): Observable<boolean> {
+  return imageIndexStream.pipe(map(imageIndex => imageIndex !== undefined));
+}
+
+/**
+ * Determines if the "Previous" button should be active or not.
+ *
+ * @returns A stream emitting if the "Previous" button is active.
+ */
+export function createPreviousButtonActiveStream(
+  imageIndexStream: Observable<number | undefined>
+): Observable<boolean> {
+  return imageIndexStream.pipe(map(imageIndex => imageIndex !== 0));
+}
+
+/**
+ * Fades out the into panel when the page is activated.
  *
  * @returns A stream emitting the opacity of the intro panel.
  */
@@ -113,7 +153,7 @@ export function createIntroOpacityStream(activateStream: Observable<MouseEvent>)
 }
 
 /**
- * Fades in the outro panel once the end is reached.
+ * Fades in/out the outro panel once the end is reached.
  *
  * @returns A stream emitting opacity of the outro panel.
  */
@@ -134,7 +174,7 @@ export function createOutroOpacityStream(imageIndexStream: Observable<number | u
 
 /**
  * Determines which image is visible (and which images are upcoming) based
- * on the virual scroll progress.
+ * on the current image index.
  *
  * @returns A stream emitting the current image, and a stream emitting the upcoming images.
  */
@@ -162,9 +202,9 @@ export function createImageStreams(imageIndexStream: Observable<number | undefin
 }
 
 /**
- * Determines the percentage that the user has progressed through the current image.
+ * Tracks which image is visible based on the next/previous transition events.
  *
- * @returns A stream emitting the current image index, or `undefined` when there are no more images
+ * @returns A stream emitting the current image index, or `undefined` when there are no more images.
  */
 export function createImageIndexStream(transitionStream: Observable<number>, numberOfImages: number) {
   return transitionStream.pipe(
@@ -186,7 +226,7 @@ export function createImageIndexStream(transitionStream: Observable<number>, num
 /**
  * Fades the image in and out.
  *
- * @returns A stream emitting the opacity of the image.
+ * @returns A stream emitting the state of the image.
  */
 export function createImageTransitionStream(
   activateStream: Observable<MouseEvent>,
@@ -197,7 +237,7 @@ export function createImageTransitionStream(
     // static intro image
     of({ transition: imageIntroState, image: images[0] }),
 
-    // wait until the first mouse click, then fade in the first image
+    // wait until the page is activated, then fade in the first image
     activateStream.pipe(
       switchMap(() =>
         from(imageIntroFadeIn).pipe(
@@ -207,9 +247,9 @@ export function createImageTransitionStream(
       )
     ),
 
+    // after that, track the image steam for next/previous transition events
     imageStream.pipe(
       pairwise(),
-      tap(([previousImage, newImage]) => console.log(previousImage, newImage)),
       switchMap(([previousImage, newImage]) =>
         concat(
           // fade out the previous image
@@ -241,6 +281,11 @@ export function createImageTransitionStream(
   );
 }
 
+/**
+ * Computes the image's blur filter based on the mouse position and the blur stength input events.
+ *
+ * @returns A stream emitting the blur filter value for the image.
+ */
 export function createImageBlurStream(
   activateStream: Observable<MouseEvent>,
   mouseMoveStream: Observable<MouseEvent>,
