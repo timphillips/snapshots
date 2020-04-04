@@ -1,4 +1,4 @@
-import { Observable, Observer, concat, from, of } from "rxjs";
+import { Observable, Observer, concat, from, of, range } from "rxjs";
 import {
   combineLatest,
   concatMap,
@@ -58,7 +58,7 @@ const imageIntroFadeIn: ImageState[] = [
 ];
 
 /**
- * Keyframes for fading in an image with a blur effect.
+ * Keyframes for fading in an image with a blur/resize effect.
  */
 const imageFadeIn: ImageState[] = [
   { opacity: 0.1, blur: 45, size: -10 },
@@ -74,7 +74,7 @@ const imageFadeIn: ImageState[] = [
 ];
 
 /**
- * Keyframes for fading out an image with a blur effect.
+ * Keyframes for fading out an image with a blur/resize effect.
  */
 const imageFadeOut: ImageState[] = [
   { opacity: 0.9, blur: 0, size: 0 },
@@ -92,7 +92,8 @@ const imageFadeOut: ImageState[] = [
 /**
  * Loads an image without actually including it in the DOM.
  *
- * This is used totrigger preloading images before they need to be displayed.
+ * This is used to allow waiting for an image to load before
+ * displaying it in the page.
  *
  * @returns A stream that emits when the image is loaded.
  */
@@ -109,6 +110,26 @@ function loadImage(imagePath: string): Observable<HTMLImageElement> {
 }
 
 /**
+ * Disables the "Next" button when there are no more images to view.
+ *
+ * @returns A stream emitting if the "Next" button is active.
+ */
+export function createNextButtonActiveStream(imageIndexStream: Observable<number | undefined>): Observable<boolean> {
+  return imageIndexStream.pipe(map(imageIndex => imageIndex !== undefined));
+}
+
+/**
+ * Disables the "Previous" button when viewing the first image.
+ *
+ * @returns A stream emitting if the "Previous" button is active.
+ */
+export function createPreviousButtonActiveStream(
+  imageIndexStream: Observable<number | undefined>
+): Observable<boolean> {
+  return imageIndexStream.pipe(map(imageIndex => imageIndex !== 0));
+}
+
+/**
  * Fades in the control panel when the initial image fades in.
  *
  * @returns A stream emitting the opacity of the controls panel.
@@ -118,26 +139,6 @@ export function createControlsOpacityStream(activateStream: Observable<MouseEven
     switchMap(() => from([0, 0.2, 0.4, 0.6, 0.8, 1]).pipe(concatMap(x => of(x).pipe(delay(40))))),
     startWith(0)
   );
-}
-
-/**
- * Determines if the "Next" button should be active or not.
- *
- * @returns A stream emitting if the "Next" button is active.
- */
-export function createNextButtonActiveStream(imageIndexStream: Observable<number | undefined>): Observable<boolean> {
-  return imageIndexStream.pipe(map(imageIndex => imageIndex !== undefined));
-}
-
-/**
- * Determines if the "Previous" button should be active or not.
- *
- * @returns A stream emitting if the "Previous" button is active.
- */
-export function createPreviousButtonActiveStream(
-  imageIndexStream: Observable<number | undefined>
-): Observable<boolean> {
-  return imageIndexStream.pipe(map(imageIndex => imageIndex !== 0));
 }
 
 /**
@@ -162,9 +163,17 @@ export function createOutroOpacityStream(imageIndexStream: Observable<number | u
     pairwise(),
     switchMap(([previousIndex, nextIndex]) => {
       if (previousIndex !== undefined && nextIndex === undefined) {
-        return from([0, 0.2, 0.4, 0.6, 0.8, 1]).pipe(concatMap(x => of(x).pipe(delay(40))));
+        // fade in when transitioning from the last image to the end state
+        return range(0, 6).pipe(
+          map(number => number / 5), // converts [0, 1, 2, 3, 4] to [0, 0.2, 0.4, 0.6, 0.8, 1]
+          concatMap(opacity => of(opacity).pipe(delay(40)))
+        );
       } else if (previousIndex === undefined && nextIndex !== undefined) {
-        return from([1, 0.8, 0.6, 0.4, 0.2, 0]).pipe(concatMap(x => of(x).pipe(delay(40))));
+        // fade out when transitioning from the end state back to the last image
+        return range(0, 6).pipe(
+          map(number => 1 - number / 5), // converts [0, 1, 2, 3, 4] to [1, 0.8, 0.6, 0.4, 0.3, 0])
+          concatMap(x => of(x).pipe(delay(40)))
+        );
       }
       return of(0);
     }),
@@ -188,6 +197,7 @@ export function createImageStreams(imageIndexStream: Observable<number | undefin
       }
 
       const upcomingImages = [];
+      // preload the next 4 images
       for (let i = 0; i <= 3; i++) {
         if (i + imageIndex >= images.length) {
           break;
@@ -202,7 +212,7 @@ export function createImageStreams(imageIndexStream: Observable<number | undefin
 }
 
 /**
- * Tracks which image is visible based on the next/previous transition events.
+ * Tracks which image is visible based on the given transition events.
  *
  * @returns A stream emitting the current image index, or `undefined` when there are no more images.
  */
@@ -211,7 +221,7 @@ export function createImageIndexStream(transitionStream: Observable<number>, num
     scan<number, number | undefined>((previous, adjustment) => {
       if (previous === undefined) {
         if (adjustment >= 0) {
-          return undefined;
+          return undefined; // no more images left
         }
         return numberOfImages + adjustment;
       }
@@ -247,12 +257,12 @@ export function createImageTransitionStream(
       )
     ),
 
-    // after that, track the image steam for next/previous transition events
+    // after that, track the image steam for transition events
     imageStream.pipe(
       pairwise(),
       switchMap(([previousImage, newImage]) =>
         concat(
-          // fade out the previous image
+          // fade out the previous image (if needed)
           previousImage
             ? from(imageFadeOut).pipe(
                 concatMap(x => of(x).pipe(delay(30))),
@@ -268,7 +278,7 @@ export function createImageTransitionStream(
               )
             : of({ transition: imageOutroState, image: undefined }),
 
-          // fade in the next image
+          // fade in the next image (if not at the end state)
           newImage
             ? from(imageFadeIn).pipe(
                 concatMap(x => of(x).pipe(delay(40))),
@@ -299,8 +309,10 @@ export function createImageBlurStream(
   return concat(activateStream, mouseMoveStream).pipe(
     combineLatest(baseBlurStream),
     map(([mouseMove, blur]) => {
-      const centerWidth = window.innerWidth / 2;
-      const centerHeight = window.innerHeight / 2;
+      const { centerWidth, centerHeight } = {
+        centerWidth: window.innerWidth / 2,
+        centerHeight: window.innerHeight / 2
+      };
       const horizontalDistanceFromCenter =
         (mouseMove.clientX < centerWidth ? centerWidth - mouseMove.clientX : mouseMove.clientX - centerWidth) /
         centerWidth;
@@ -331,7 +343,7 @@ export function createImageSepiaStream(sepiaStream: Observable<InputEvent>) {
  * Converts image size input events to image height values.
  * Also adjusts the image height slightly when the image is faded in or out.
  *
- * @returns A stream emitting the height of the current image.
+ * @returns A stream emitting the height of the image.
  */
 export function createImageHeightStream(zoomStream: Observable<InputEvent>) {
   return zoomStream.pipe(

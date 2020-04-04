@@ -41,9 +41,9 @@ function init() {
   const zoomElement = requireHtmlElement("zoom");
 
   // DOM event streams
-  const clickNextStream = fromEvent<MouseEvent>(nextElement, "click");
-  const clickPreviousStream = fromEvent<MouseEvent>(previousElement, "click");
   const clickStream = fromEvent<MouseEvent>(window.document, "click");
+  const clickControlsStream = fromEvent<MouseEvent>(controlsElement, "click");
+  const clickPreviousStream = fromEvent<MouseEvent>(previousElement, "click");
 
   const keyUpStream = fromEvent<KeyboardEvent>(window.document, "keyup");
   const mouseMoveStream = fromEvent<MouseEvent>(window.document, "mousemove");
@@ -58,7 +58,7 @@ function init() {
   const rightArrowStream = keyUpStream.pipe(filter(key => key.keyCode === 39));
 
   const previousImageStream = merge(clickPreviousStream, leftArrowStream).pipe(mapTo(-1));
-  const nextImageStream = merge(clickNextStream, rightArrowStream).pipe(mapTo(1));
+  const nextImageStream = merge(clickStream, rightArrowStream).pipe(mapTo(1));
 
   const imageIndexStream = createImageIndexStream(merge(previousImageStream, nextImageStream), shuffledImages.length);
   const { imageStream, upcomingImagesStream } = createImageStreams(imageIndexStream, shuffledImages);
@@ -77,6 +77,7 @@ function init() {
   // apply DOM updates
   upcomingImagesStream.subscribe(upcomingImages => {
     for (const image of upcomingImages) {
+      // start preloading upcoming images
       new Image().src = getCloudImageUrl(image, window.innerHeight);
     }
   });
@@ -104,6 +105,9 @@ function init() {
     setOpacity(previousElement, opacity);
     toggleCssClass(previousElement, "arrowControl--active", isActive);
   });
+  // clicking on the controls or the previous button should not bubble
+  // up to the document click handler that advances to the next image
+  merge(clickControlsStream, clickPreviousStream).subscribe(e => e.stopPropagation());
 }
 
 window.onload = init;

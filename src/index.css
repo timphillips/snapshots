@@ -157,6 +157,7 @@ a:hover {
 
   .controlLabel {
     margin-right: 5px;
+    margin-bottom: 0;
   }
 }
 
@@ -221,6 +222,7 @@ a:hover {
   border-width: 0 2px 2px 0;
   display: inline-block;
   padding: 10px;
+  position: relative;
 }
 
 .arrow--left {
@@ -231,4 +233,6 @@ a:hover {
 .arrow--right {
   transform: rotate(-45deg);
   -webkit-transform: rotate(-45deg);
+  left: -11px;
+  top: -1px;
 }
