@@ -1,129 +1,102 @@
-import { Observable, of, range, interval, pipe } from "rxjs";
+import { Observable, Observer, concat, from, of } from "rxjs";
 import {
   combineLatest,
+  concatMap,
+  delay,
   distinctUntilChanged,
-  filter,
   map,
   mapTo,
-  merge,
+  pairwise,
   scan,
   startWith,
   switchMap,
-  takeLast,
-  takeUntil,
-  tap,
-  take,
-  share
+  tap
 } from "rxjs/operators";
+
+import { getCloudImageUrl } from "./utils";
 
 interface Image {
   readonly alt: string;
   readonly src: string;
 }
 
-export function createSwipeStream(
-  touchStartStream: Observable<TouchEvent>,
-  touchMoveStream: Observable<TouchEvent>,
-  touchEndStream: Observable<TouchEvent>
-): Observable<"swipeUp" | "swipeDown"> {
-  const tolerance = 100; // swipe distance in pixels
-  // Switch to listen to touchmove to determine position
-  return touchStartStream.pipe(
-    switchMap(startEvent =>
-      touchMoveStream.pipe(
-        // Listen until "touchend" is fired
-        takeUntil(touchEndStream),
-        // Output the pageX location
-        map(event => event.touches[0].pageY),
-        // Accumulate the pageX difference from the start of the touch
-        scan((_, pageY) => Math.round(startEvent.touches[0].pageY - pageY), 0),
-        // Take the last output and filter it to output only swipes
-        // greater than the defined tolerance
-        takeLast(1),
-        filter(difference => Math.abs(difference) >= tolerance),
-        map(difference => (difference >= tolerance ? "swipeUp" : "swipeDown"))
-      )
-    )
-  );
+interface ImageState {
+  readonly opacity: number;
+  readonly blur: number;
+  readonly size?: number;
 }
 
-/**
- * Converts the given streams of wheel/touch events to a number representing
- * the virtual scroll progress on the page.
- *
- * The progress starts at 0 (the top of the page), increases as the user
- * scrolls down, and decreases as the user scrolls up.
- *
- * @returns A stream indicating the virtual scroll progress on the page.
- */
-export function createProgressStream(
-  mouseMoveStream: Observable<MouseEvent>,
-  touchStartStream: Observable<TouchEvent>,
-  touchMoveStream: Observable<TouchEvent>,
-  touchEndStream: Observable<TouchEvent>,
-  wheelStream: Observable<MouseWheelEvent>,
-  progressLimit: number
-) {
-  const swipeStream = createSwipeStream(touchStartStream, touchMoveStream, touchEndStream);
+const imageIntroState: ImageState = {
+  opacity: 0.2,
+  blur: 10
+};
 
-  const normalizedWheelStream = wheelStream.pipe(
-    // are we scrolling up or down?
-    map(event => ((event.deltaY * -1 || event.detail * -1) > 0 ? "scrollDown" : "scrollUp"))
-  );
+const imageOutroState: ImageState = {
+  opacity: 0,
+  blur: 0
+};
 
-  const combinedEventsStream = normalizedWheelStream.pipe(merge(swipeStream));
+const imageIntroFadeIn: ImageState[] = [
+  { opacity: 0.3, blur: 10, size: -10 },
+  { opacity: 0.4, blur: 10, size: -10 },
+  { opacity: 0.5, blur: 10, size: -10 },
+  { opacity: 0.6, blur: 10, size: -10 },
+  { opacity: 0.7, blur: 8, size: -8 },
+  { opacity: 0.8, blur: 6, size: -6 },
+  { opacity: 0.9, blur: 4, size: -4 },
+  { opacity: 1.0, blur: 2, size: -2 },
+  { opacity: 1.0, blur: 0 }
+];
 
-  return combinedEventsStream.pipe(
-    switchMap(change => {
-      if (change === "scrollDown") {
-        return of(-1);
-      }
-      if (change === "scrollUp") {
-        return of(1);
-      }
-      if (change === "swipeDown") {
-        return interval(40).pipe(take(20), mapTo(1));
-      }
-      if (change === "swipeUp") {
-        return interval(30).pipe(take(20), mapTo(-1));
-      }
-      return of(0);
-    }),
-    scan((progress, adjustment) => {
-      console.log((progress - 10) / 20);
-      return progress + adjustment;
-    }, 0),
-    startWith(0),
-    distinctUntilChanged(),
-    share()
-  );
+const imageFadeOut: ImageState[] = [
+  { opacity: 0.9, blur: 0, size: 0 },
+  { opacity: 0.8, blur: 5, size: -2 },
+  { opacity: 0.7, blur: 10, size: -3 },
+  { opacity: 0.6, blur: 15, size: -4 },
+  { opacity: 0.5, blur: 20, size: -5 },
+  { opacity: 0.4, blur: 25, size: -6 },
+  { opacity: 0.3, blur: 30, size: -7 },
+  { opacity: 0.2, blur: 35, size: -8 },
+  { opacity: 0.1, blur: 40, size: -9 },
+  { opacity: 0.0, blur: 45, size: -10 }
+];
+
+const imageFadeIn: ImageState[] = [
+  { opacity: 0.1, blur: 45, size: -10 },
+  { opacity: 0.2, blur: 40, size: -9 },
+  { opacity: 0.3, blur: 35, size: -8 },
+  { opacity: 0.4, blur: 30, size: -7 },
+  { opacity: 0.5, blur: 25, size: -6 },
+  { opacity: 0.6, blur: 20, size: -5 },
+  { opacity: 0.7, blur: 15, size: -4 },
+  { opacity: 0.8, blur: 10, size: -3 },
+  { opacity: 0.9, blur: 5, size: -2 },
+  { opacity: 1.0, blur: 0, size: 0 }
+];
+
+function loadImage(imagePath: string): Observable<HTMLImageElement> {
+  return Observable.create((observer: Observer<HTMLImageElement>) => {
+    var image = new Image();
+    image.src = getCloudImageUrl(imagePath, window.innerHeight);
+    image.onload = () => {
+      observer.next(image);
+      observer.complete();
+    };
+    image.onerror = err => observer.error(err);
+  });
 }
 
 /**
  * Fades in the control panel when the initial image fades in.
+ *
  * Hides the control panel once the end is reached.
  *
  * @returns A stream emitting the opacity of the controls panel.
  */
-export function createControlsOpacityStream(
-  progressStream: Observable<number>,
-  progressLimit: number
-): Observable<number> {
-  return progressStream.pipe(
-    map(progress => {
-      if (progress > progressLimit) {
-        return 0;
-      }
-      if (progress > 8) {
-        return 1;
-      }
-      if (progress < 3) {
-        return 0;
-      }
-
-      return (progress - 3) / 5;
-    }),
-    distinctUntilChanged()
+export function createControlsOpacityStream(activateStream: Observable<MouseEvent>): Observable<number> {
+  return activateStream.pipe(
+    switchMap(() => from([0, 0.2, 0.4, 0.6, 0.8, 1]).pipe(concatMap(x => of(x).pipe(delay(40))))),
+    startWith(0)
   );
 }
 
@@ -132,8 +105,11 @@ export function createControlsOpacityStream(
  *
  * @returns A stream emitting the opacity of the intro panel.
  */
-export function createIntroOpacityStream(progressStream: Observable<number>) {
-  return progressStream.pipe(map(progress => (progress === 0 ? 1 : 1 - (progress / 5) * 2)));
+export function createIntroOpacityStream(activateStream: Observable<MouseEvent>) {
+  return activateStream.pipe(
+    switchMap(() => from([1, 0.8, 0.6, 0.4, 0.2, 0]).pipe(concatMap(x => of(x).pipe(delay(40))))),
+    startWith(1)
+  );
 }
 
 /**
@@ -141,11 +117,18 @@ export function createIntroOpacityStream(progressStream: Observable<number>) {
  *
  * @returns A stream emitting opacity of the outro panel.
  */
-export function createOutroOpacityStream(progressStream: Observable<number>, progressLimit: number) {
-  return progressStream.pipe(
-    map(progress => (progress === progressLimit ? 1 : 0)),
-    startWith(0),
-    distinctUntilChanged()
+export function createOutroOpacityStream(imageIndexStream: Observable<number | undefined>) {
+  return imageIndexStream.pipe(
+    pairwise(),
+    switchMap(([previousIndex, nextIndex]) => {
+      if (previousIndex !== undefined && nextIndex === undefined) {
+        return from([0, 0.2, 0.4, 0.6, 0.8, 1]).pipe(concatMap(x => of(x).pipe(delay(40))));
+      } else if (previousIndex === undefined && nextIndex !== undefined) {
+        return from([1, 0.8, 0.6, 0.4, 0.2, 0]).pipe(concatMap(x => of(x).pipe(delay(40))));
+      }
+      return of(0);
+    }),
+    startWith(0)
   );
 }
 
@@ -155,28 +138,21 @@ export function createOutroOpacityStream(progressStream: Observable<number>, pro
  *
  * @returns A stream emitting the current image, and a stream emitting the upcoming images.
  */
-export function createImageStreams(
-  progressStream: Observable<number>,
-  images: readonly Image[],
-  stepsPerImage: number
-) {
-  const imageIndexStream = progressStream.pipe(
-    map(progress => Math.floor(progress / stepsPerImage)),
-    distinctUntilChanged()
-  );
-
-  const imageStream = imageIndexStream.pipe(
-    map(imageIndex => (imageIndex < images.length - 1 ? images[imageIndex] : images[images.length - 1]))
-  );
+export function createImageStreams(imageIndexStream: Observable<number | undefined>, images: readonly Image[]) {
+  const imageStream = imageIndexStream.pipe(map(index => (index === undefined ? undefined : images[index])));
 
   const upcomingImagesStream = imageIndexStream.pipe(
     map(imageIndex => {
+      if (imageIndex === undefined) {
+        return [];
+      }
+
       const upcomingImages = [];
       for (let i = 0; i <= 3; i++) {
         if (i + imageIndex >= images.length) {
           break;
         }
-        upcomingImages.push(images[i + imageIndex]);
+        upcomingImages.push(images[i + imageIndex].src);
       }
       return upcomingImages;
     })
@@ -188,15 +164,22 @@ export function createImageStreams(
 /**
  * Determines the percentage that the user has progressed through the current image.
  *
- * @returns A stream emitting the current
+ * @returns A stream emitting the current image index, or `undefined` when there are no more images
  */
-export function createPercentWithinImageStream(progressStream: Observable<number>, stepsPerImage: number) {
-  return progressStream.pipe(
-    map(progress => {
-      // TODO: Review this?
-      const imageIndex = Math.floor(progress / stepsPerImage);
-      return ((progress - imageIndex * stepsPerImage) / stepsPerImage) * 100;
-    })
+export function createImageIndexStream(transitionStream: Observable<number>, numberOfImages: number) {
+  return transitionStream.pipe(
+    scan<number, number | undefined>((previous, adjustment) => {
+      if (previous === undefined) {
+        if (adjustment >= 0) {
+          return undefined;
+        }
+        return numberOfImages + adjustment;
+      }
+      const newImageIndex = previous + adjustment;
+      return newImageIndex < 0 ? 0 : newImageIndex >= numberOfImages ? undefined : newImageIndex;
+    }, 0),
+    startWith(0),
+    distinctUntilChanged()
   );
 }
 
@@ -205,55 +188,84 @@ export function createPercentWithinImageStream(progressStream: Observable<number
  *
  * @returns A stream emitting the opacity of the image.
  */
-export function createImageOpacityStream(
-  progressStream: Observable<number>,
-  percentWithinImageStream: Observable<number>,
-  progressLimit: number
+export function createImageTransitionStream(
+  activateStream: Observable<MouseEvent>,
+  imageStream: Observable<Image | undefined>,
+  images: readonly Image[]
 ) {
-  return progressStream.pipe(
-    combineLatest<number, number>(percentWithinImageStream),
-    map(([progress, percent]) => {
-      // TODO: remove magic strings
-      if (progress === 0) {
-        return 0.2;
-      }
-      if (progress === 1) {
-        return 0.3;
-      }
-      if (progress === 2) {
-        return 0.4;
-      }
-      if (progress === 3) {
-        return 0.5;
-      }
-      if (progress === 4) {
-        return 0.6;
-      }
-      if (progress === 5) {
-        return 0.7;
-      }
-      if (progress === 6) {
-        return 0.8;
-      }
-      if (progress === 7) {
-        return 0.9;
-      }
-      if (progress === 8) {
-        return 1;
-      }
-      if (progress >= progressLimit) {
-        return 0;
-      }
+  return concat(
+    // static intro image
+    of({ transition: imageIntroState, image: images[0] }),
 
-      if (percent < 20) {
-        return percent / 20;
-      }
-      if (percent > 75) {
-        return 1 - (percent - 75) / 20;
-      }
-      return 1;
+    // wait until the first mouse click, then fade in the first image
+    activateStream.pipe(
+      switchMap(() =>
+        from(imageIntroFadeIn).pipe(
+          concatMap(x => of(x).pipe(delay(50))),
+          map(transition => ({ transition, image: images[0] }))
+        )
+      )
+    ),
+
+    imageStream.pipe(
+      pairwise(),
+      tap(([previousImage, newImage]) => console.log(previousImage, newImage)),
+      switchMap(([previousImage, newImage]) =>
+        concat(
+          // fade out the previous image
+          previousImage
+            ? from(imageFadeOut).pipe(
+                concatMap(x => of(x).pipe(delay(30))),
+                map(transition => ({ transition, image: previousImage }))
+              )
+            : of({ transition: imageOutroState, image: undefined }),
+
+          // wait until the next image is loaded before fading it in
+          newImage
+            ? loadImage(newImage.src).pipe(
+                mapTo(imageFadeIn[0]),
+                map(transition => ({ transition, image: newImage }))
+              )
+            : of({ transition: imageOutroState, image: undefined }),
+
+          // fade in the next image
+          newImage
+            ? from(imageFadeIn).pipe(
+                concatMap(x => of(x).pipe(delay(40))),
+                map(transition => ({ transition, image: newImage }))
+              )
+            : of({ transition: imageOutroState, image: undefined })
+        )
+      )
+    )
+  );
+}
+
+export function createImageBlurStream(
+  activateStream: Observable<MouseEvent>,
+  mouseMoveStream: Observable<MouseEvent>,
+  blurStream: Observable<InputEvent>
+) {
+  const baseBlurStream = blurStream.pipe(
+    map(event => Number((event.target as HTMLInputElement).value)),
+    startWith(2)
+  );
+
+  return concat(activateStream, mouseMoveStream).pipe(
+    combineLatest(baseBlurStream),
+    map(([mouseMove, blur]) => {
+      const centerWidth = window.innerWidth / 2;
+      const centerHeight = window.innerHeight / 2;
+      const horizontalDistanceFromCenter =
+        (mouseMove.clientX < centerWidth ? centerWidth - mouseMove.clientX : mouseMove.clientX - centerWidth) /
+        centerWidth;
+      const verticalDistanceFromCenter =
+        (mouseMove.clientY < centerHeight ? centerHeight - mouseMove.clientY : mouseMove.clientY - centerHeight) /
+        centerHeight;
+      const distance = Math.max(horizontalDistanceFromCenter, verticalDistanceFromCenter);
+      return distance * blur * 2;
     }),
-    distinctUntilChanged()
+    startWith(0)
   );
 }
 
@@ -281,17 +293,5 @@ export function createImageHeightStream(zoomStream: Observable<InputEvent>) {
     map(event => Number((event.target as HTMLInputElement).value)),
     startWith(100), // start with full size
     map(zoom => window.innerHeight * ((zoom / 100) * 0.9))
-  );
-}
-
-/**
- * TODO
- *
- * @returns TODO
- */
-export function createImageBlurStream(blurStream: Observable<InputEvent>) {
-  return blurStream.pipe(
-    map(event => Number((event.target as HTMLInputElement).value)),
-    startWith(1)
   );
 }
