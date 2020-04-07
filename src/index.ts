@@ -12,7 +12,7 @@ import {
   createOutroOpacityStream,
   createPreviousButtonActiveStream
 } from "./streams";
-import { debounceTime, filter, mapTo, take } from "rxjs/operators";
+import { debounceTime, filter, map, mapTo, take } from "rxjs/operators";
 import {
   getCloudImageUrl,
   requireHtmlElement,
@@ -29,7 +29,7 @@ function init() {
   const shuffledImages = shuffleArray(images);
 
   // DOM elements
-  const blurElement = requireHtmlElement("blur");
+  const blurElement = requireHtmlElement("blur") as HTMLInputElement;
   const controlsElement = requireHtmlElement("controls");
   const imageCaptionElement = requireHtmlElement("imageCaption");
   const imageElement = requireHtmlElement("image") as HTMLImageElement;
@@ -37,8 +37,8 @@ function init() {
   const nextElement = requireHtmlElement("next");
   const outroElement = requireHtmlElement("outro");
   const previousElement = requireHtmlElement("previous");
-  const sepiaElement = requireHtmlElement("sepia");
-  const zoomElement = requireHtmlElement("zoom");
+  const sepiaElement = requireHtmlElement("sepia") as HTMLInputElement;
+  const zoomElement = requireHtmlElement("zoom") as HTMLInputElement;
 
   // DOM event streams
   const clickStream = fromEvent<MouseEvent>(window.document, "click");
@@ -47,6 +47,7 @@ function init() {
 
   const keyUpStream = fromEvent<KeyboardEvent>(window.document, "keyup");
   const mouseMoveStream = fromEvent<MouseEvent>(window.document, "mousemove");
+  const mouseWheelStream = fromEvent<MouseWheelEvent>(window.document, "wheel");
 
   const blurStream = fromEvent<InputEvent>(blurElement, "input");
   const sepiaStream = fromEvent<InputEvent>(sepiaElement, "input");
@@ -75,6 +76,16 @@ function init() {
   const introOpacityStream = createIntroOpacityStream(activateStream);
 
   // apply DOM updates
+  mouseWheelStream
+    .pipe(map(event => ((event.deltaY * -1 || event.detail * -1) > 0 ? -10 : 10)))
+    .subscribe(adjustment => {
+      const currentValue = parseInt(zoomElement.value);
+      const newValue = currentValue + adjustment;
+      if (currentValue != newValue && newValue >= 20 && newValue <= 200) {
+        zoomElement.value = newValue.toString();
+        zoomElement.dispatchEvent(new Event("input"));
+      }
+    });
   upcomingImagesStream.subscribe(upcomingImages => {
     for (const image of upcomingImages) {
       // start preloading upcoming images
