@@ -98,6 +98,7 @@ a:hover {
   margin: 0;
   padding: 0;
   font-family: "Nova Cut", cursive;
+  cursor: pointer;
 }
 
 .control {
@@ -195,6 +196,7 @@ a:hover {
   height: 20px;
   opacity: 0;
   border: none;
+  outline: none;
 }
 
 .arrowControl--left {

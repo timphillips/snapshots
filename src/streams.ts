@@ -1,4 +1,15 @@
-import { Observable, Observer, concat, from, of, range } from "rxjs";
+import {
+  NEVER,
+  Observable,
+  Observer,
+  OperatorFunction,
+  combineLatest as combineLatestObservable,
+  concat,
+  from,
+  merge,
+  of,
+  range
+} from "rxjs";
 import {
   combineLatest,
   concatMap,
@@ -9,11 +20,26 @@ import {
   pairwise,
   scan,
   startWith,
-  switchMap,
-  tap
+  switchMap
 } from "rxjs/operators";
 
 import { getCloudImageUrl } from "./utils";
+
+/**
+ * System events.
+ */
+export enum Event {
+  OpenInfo = "openInfo",
+  CloseInfo = "closeInfo"
+}
+
+/**
+ * System state.
+ */
+export enum State {
+  Info = "info",
+  Image = "image"
+}
 
 interface Image {
   readonly alt: string;
@@ -27,9 +53,9 @@ interface ImageState {
 }
 
 /**
- * Image state when the intro panel is visible.
+ * Image state when the info panel is visible.
  */
-const imageIntroState: ImageState = {
+const infoImageState: ImageState = {
   opacity: 0.2,
   blur: 10
 };
@@ -43,9 +69,9 @@ const imageOutroState: ImageState = {
 };
 
 /**
- * Keyframes for fading in an image from the intro state.
+ * Keyframes for fading in an image from the info state.
  */
-const imageIntroFadeIn: ImageState[] = [
+const infoImageFadeIn: ImageState[] = [
   { opacity: 0.3, blur: 10, size: -10 },
   { opacity: 0.4, blur: 10, size: -10 },
   { opacity: 0.5, blur: 10, size: -10 },
@@ -55,6 +81,21 @@ const imageIntroFadeIn: ImageState[] = [
   { opacity: 0.9, blur: 4, size: -4 },
   { opacity: 1.0, blur: 2, size: -2 },
   { opacity: 1.0, blur: 0 }
+];
+
+/**
+ * Keyframes for fading out an image into the info state.
+ */
+const infoImageFadeOut: ImageState[] = [
+  { opacity: 1.0, blur: 0 },
+  { opacity: 1.0, blur: 2, size: -2 },
+  { opacity: 0.9, blur: 4, size: -4 },
+  { opacity: 0.8, blur: 6, size: -6 },
+  { opacity: 0.7, blur: 8, size: -8 },
+  { opacity: 0.6, blur: 10, size: -10 },
+  { opacity: 0.5, blur: 10, size: -10 },
+  { opacity: 0.4, blur: 10, size: -10 },
+  { opacity: 0.3, blur: 10, size: -10 }
 ];
 
 /**
@@ -88,6 +129,10 @@ const imageFadeOut: ImageState[] = [
   { opacity: 0.1, blur: 40, size: -9 },
   { opacity: 0.0, blur: 45, size: -10 }
 ];
+
+function delayBy<T>(milliseconds: number): OperatorFunction<T, T> {
+  return concatMap(x => of(x).pipe(delay(milliseconds)));
+}
 
 /**
  * Loads an image without actually including it in the DOM.
@@ -134,9 +179,17 @@ export function createPreviousButtonActiveStream(
  *
  * @returns A stream emitting the opacity of the controls panel.
  */
-export function createControlsOpacityStream(activateStream: Observable<MouseEvent>): Observable<number> {
-  return activateStream.pipe(
-    switchMap(() => from([0, 0.2, 0.4, 0.6, 0.8, 1]).pipe(concatMap(x => of(x).pipe(delay(40))))),
+export function createControlsOpacityStream(stateStream: Observable<State>): Observable<number> {
+  return stateStream.pipe(
+    pairwise(),
+    switchMap(([previousState, nextState]) => {
+      if (nextState === "image") {
+        return from([0, 0.2, 0.4, 0.6, 0.8, 1]).pipe(delayBy(50));
+      } else if (previousState === "image") {
+        return from([1, 0.8, 0.6, 0.4, 0.2, 0]).pipe(delayBy(50));
+      }
+      return of(0);
+    }),
     startWith(0)
   );
 }
@@ -144,11 +197,19 @@ export function createControlsOpacityStream(activateStream: Observable<MouseEven
 /**
  * Fades out the into panel when the page is activated.
  *
- * @returns A stream emitting the opacity of the intro panel.
+ * @returns A stream emitting the opacity of the info panel.
  */
-export function createIntroOpacityStream(activateStream: Observable<MouseEvent>) {
-  return activateStream.pipe(
-    switchMap(() => from([1, 0.8, 0.6, 0.4, 0.2, 0]).pipe(concatMap(x => of(x).pipe(delay(40))))),
+export function createInfoOpacityStream(stateStream: Observable<State>): Observable<number> {
+  return stateStream.pipe(
+    pairwise(),
+    switchMap(([previousState, nextState]) => {
+      if (nextState === "image") {
+        return from([1, 0.8, 0.6, 0.4, 0.2, 0]).pipe(delayBy(50));
+      } else if (previousState === "image") {
+        return from([0, 0.2, 0.4, 0.6, 0.8, 1]).pipe(delayBy(50));
+      }
+      return of(0);
+    }),
     startWith(1)
   );
 }
@@ -158,7 +219,7 @@ export function createIntroOpacityStream(activateStream: Observable<MouseEvent>)
  *
  * @returns A stream emitting opacity of the outro panel.
  */
-export function createOutroOpacityStream(imageIndexStream: Observable<number | undefined>) {
+export function createOutroOpacityStream(imageIndexStream: Observable<number | undefined>): Observable<number> {
   return imageIndexStream.pipe(
     pairwise(),
     switchMap(([previousIndex, nextIndex]) => {
@@ -166,13 +227,13 @@ export function createOutroOpacityStream(imageIndexStream: Observable<number | u
         // fade in when transitioning from the last image to the end state
         return range(0, 6).pipe(
           map(number => number / 5), // converts [0, 1, 2, 3, 4] to [0, 0.2, 0.4, 0.6, 0.8, 1]
-          concatMap(opacity => of(opacity).pipe(delay(40)))
+          delayBy(40)
         );
       } else if (previousIndex === undefined && nextIndex !== undefined) {
         // fade out when transitioning from the end state back to the last image
         return range(0, 6).pipe(
           map(number => 1 - number / 5), // converts [0, 1, 2, 3, 4] to [1, 0.8, 0.6, 0.4, 0.3, 0])
-          concatMap(x => of(x).pipe(delay(40)))
+          delayBy(40)
         );
       }
       return of(0);
@@ -216,19 +277,58 @@ export function createImageStreams(imageIndexStream: Observable<number | undefin
  *
  * @returns A stream emitting the current image index, or `undefined` when there are no more images.
  */
-export function createImageIndexStream(transitionStream: Observable<number>, numberOfImages: number) {
+export function createImageIndexStream(
+  stateStream: Observable<State>,
+  previousImageStream: Observable<any>,
+  nextImageStream: Observable<any>,
+  images: readonly Image[]
+) {
+  const transitionStream = stateStream.pipe(
+    switchMap(state => (state === State.Info ? NEVER : merge(previousImageStream, nextImageStream)))
+  );
+
   return transitionStream.pipe(
     scan<number, number | undefined>((previous, adjustment) => {
       if (previous === undefined) {
         if (adjustment >= 0) {
           return undefined; // no more images left
         }
-        return numberOfImages + adjustment;
+        return images.length + adjustment;
       }
       const newImageIndex = previous + adjustment;
-      return newImageIndex < 0 ? 0 : newImageIndex >= numberOfImages ? undefined : newImageIndex;
+      return newImageIndex < 0 ? 0 : newImageIndex >= images.length ? undefined : newImageIndex;
     }, 0),
     startWith(0),
+    distinctUntilChanged()
+  );
+}
+
+export function createStateStream(
+  clickControlsTitleStream: Observable<MouseEvent>,
+  clickStream: Observable<MouseEvent>
+): Observable<State> {
+  const openInfoStream = clickControlsTitleStream.pipe(mapTo(Event.OpenInfo));
+  const closeInfoStream = clickStream.pipe(mapTo(Event.CloseInfo));
+
+  return merge(openInfoStream, closeInfoStream).pipe(
+    scan<Event, State>((state, event) => {
+      switch (state) {
+        case State.Info: {
+          switch (event) {
+            case Event.CloseInfo:
+              return State.Image;
+          }
+        }
+        case State.Image: {
+          switch (event) {
+            case Event.OpenInfo:
+              return State.Info;
+          }
+        }
+      }
+      return state;
+    }, State.Info),
+    startWith(State.Info),
     distinctUntilChanged()
   );
 }
@@ -239,55 +339,62 @@ export function createImageIndexStream(transitionStream: Observable<number>, num
  * @returns A stream emitting the state of the image.
  */
 export function createImageTransitionStream(
-  activateStream: Observable<MouseEvent>,
+  stateStream: Observable<State>,
   imageStream: Observable<Image | undefined>,
   images: readonly Image[]
 ) {
-  return concat(
-    // static intro image
-    of({ transition: imageIntroState, image: images[0] }),
+  return combineLatestObservable(stateStream, imageStream).pipe(
+    pairwise(),
+    switchMap(([[previousState, previousImage], [nextState, nextImage]]) => {
+      switch (nextState) {
+        case State.Image: {
+          if (previousState === State.Info) {
+            return from(infoImageFadeIn).pipe(
+              delayBy(30),
+              map(transition => ({ transition, image: nextImage }))
+            );
+          }
+          if (nextImage !== previousImage) {
+            return concat(
+              // fade out the previous image (if needed)
+              previousImage
+                ? from(imageFadeOut).pipe(
+                    delayBy(30),
+                    map(transition => ({ transition, image: previousImage }))
+                  )
+                : of({ transition: imageOutroState, image: undefined }),
 
-    // wait until the page is activated, then fade in the first image
-    activateStream.pipe(
-      switchMap(() =>
-        from(imageIntroFadeIn).pipe(
-          concatMap(x => of(x).pipe(delay(50))),
-          map(transition => ({ transition, image: images[0] }))
-        )
-      )
-    ),
+              // wait until the next image is loaded before fading it in
+              nextImage
+                ? loadImage(nextImage.src).pipe(
+                    mapTo(imageFadeIn[0]),
+                    map(transition => ({ transition, image: nextImage }))
+                  )
+                : of({ transition: imageOutroState, image: undefined }),
 
-    // after that, track the image steam for transition events
-    imageStream.pipe(
-      pairwise(),
-      switchMap(([previousImage, newImage]) =>
-        concat(
-          // fade out the previous image (if needed)
-          previousImage
-            ? from(imageFadeOut).pipe(
-                concatMap(x => of(x).pipe(delay(30))),
-                map(transition => ({ transition, image: previousImage }))
-              )
-            : of({ transition: imageOutroState, image: undefined }),
-
-          // wait until the next image is loaded before fading it in
-          newImage
-            ? loadImage(newImage.src).pipe(
-                mapTo(imageFadeIn[0]),
-                map(transition => ({ transition, image: newImage }))
-              )
-            : of({ transition: imageOutroState, image: undefined }),
-
-          // fade in the next image (if not at the end state)
-          newImage
-            ? from(imageFadeIn).pipe(
-                concatMap(x => of(x).pipe(delay(40))),
-                map(transition => ({ transition, image: newImage }))
-              )
-            : of({ transition: imageOutroState, image: undefined })
-        )
-      )
-    )
+              // fade in the next image (if not at the end state)
+              nextImage
+                ? from(imageFadeIn).pipe(
+                    delayBy(40),
+                    map(transition => ({ transition, image: nextImage }))
+                  )
+                : of({ transition: imageOutroState, image: undefined })
+            );
+          }
+          return NEVER;
+        }
+        case State.Info: {
+          if (previousState === State.Image) {
+            return from(infoImageFadeOut).pipe(
+              delayBy(30),
+              map(transition => ({ transition, image: nextImage }))
+            );
+          }
+          return of({ transition: infoImageState, image: previousImage });
+        }
+      }
+    }),
+    startWith({ transition: infoImageState, image: images[0] })
   );
 }
 
@@ -297,7 +404,8 @@ export function createImageTransitionStream(
  * @returns A stream emitting the blur filter value for the image.
  */
 export function createImageBlurStream(
-  activateStream: Observable<MouseEvent>,
+  // TODO: Disable mouse blur when state is "image"?
+  stateStream: Observable<State>,
   mouseMoveStream: Observable<MouseEvent>,
   blurStream: Observable<InputEvent>
 ) {
@@ -306,7 +414,7 @@ export function createImageBlurStream(
     startWith(2)
   );
 
-  return concat(activateStream, mouseMoveStream).pipe(
+  return mouseMoveStream.pipe(
     combineLatest(baseBlurStream),
     map(([mouseMove, blur]) => {
       const { centerWidth, centerHeight } = {
