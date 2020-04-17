@@ -45,8 +45,10 @@ export function setFilter(element: HTMLElement, { blur, sepia }: { blur?: number
  * Hides the element entirely if the opacity is 0.
  */
 export function setOpacity(element: HTMLElement, opacity: number) {
-  if (opacity <= 0 && element.style.display !== "none") {
-    element.style.display = "none";
+  if (opacity <= 0) {
+    if (element.style.display !== "none") {
+      element.style.display = "none";
+    }
   } else if (element.style.display === "none") {
     element.style.display = "";
   }

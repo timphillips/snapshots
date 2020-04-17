@@ -77,6 +77,15 @@ a:hover {
   transition: color 0.2s;
 }
 
+@media screen and (max-width: 600px) {
+  .imageCaption {
+    left: 0;
+    margin: 0;
+    right: unset;
+    bottom: 30px;
+  }
+}
+
 .imageCaption:hover {
   color: white;
 }
@@ -142,18 +151,13 @@ a:hover {
 
 @media screen and (max-width: 600px) {
   .controls {
-    display: flex;
-    justify-content: space-between;
-    margin: 10px 10px 0 10px;
-    left: 0;
-    right: 0;
+    margin: 0;
   }
 
   .control {
-    margin-top: 0;
+    margin-top: 5px;
     display: flex;
-    line-height: 20px;
-    margin-right: 10px;
+    line-height: 10px;
   }
 
   .controlLabel {
@@ -187,16 +191,26 @@ a:hover {
   color: #666;
 }
 
+@media screen and (max-width: 600px) {
+  .footer {
+    margin: 0;
+  }
+}
+
+/* Arrow controls */
+
 .arrowControl {
   position: fixed;
   top: calc(50% - 10px);
-  background-color: rgb(0, 0, 0, 0.2);
+  background-color: transparent;
   padding: 15px 5px 15px 13px;
-  width: 20px;
-  height: 20px;
+  width: 36px;
+  height: 52px;
   opacity: 0;
   border: none;
   outline: none;
+
+  transition: background-color 0.5s;
 }
 
 .arrowControl--left {
@@ -207,9 +221,12 @@ a:hover {
   right: 15px;
 }
 
+.arrowControl--active:hover {
+  background-color: rgb(0, 0, 0, 0.7);
+}
+
 .arrowControl--active {
   cursor: pointer;
-  background-color: rgb(0, 0, 0, 0.7);
 }
 
 .arrowControl--active > .arrow {
