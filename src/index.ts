@@ -34,7 +34,7 @@ function init() {
   const controlsElement = requireHtmlElement("controls");
   const controlsTitleElement = requireHtmlElement("controlsTitle");
   const footerElement = requireHtmlElement("footer");
-  const imageCaptionElement = requireHtmlElement("imageCaption");
+  const imageCaptionElement = requireHtmlElement("imageCaptionLink") as HTMLLinkElement;
   const imageElement = requireHtmlElement("image") as HTMLImageElement;
   const infoElement = requireHtmlElement("info");
   const nextElement = requireHtmlElement("next");
@@ -47,6 +47,7 @@ function init() {
   const clickStream = fromEvent<MouseEvent>(window.document, "click");
   const clickControlsTitleStream = fromEvent<MouseEvent>(controlsTitleElement, "click");
   const clickControlsStream = fromEvent<MouseEvent>(controlsElement, "click");
+  const clickImageCaptionStream = fromEvent<MouseEvent>(imageCaptionElement, "click");
   const clickPreviousStream = fromEvent<MouseEvent>(previousElement, "click");
   const clickFooterStream = fromEvent<MouseEvent>(footerElement, "click");
 
@@ -70,7 +71,7 @@ function init() {
   const imageTransitionStream = createImageTransitionStream(stateStream, imageStream, shuffledImages);
 
   const imageHeightStream = createImageHeightStream(zoomStream);
-  const imageBlurStream = createImageBlurStream(stateStream, mouseMoveStream, blurStream);
+  const imageBlurStream = createImageBlurStream(mouseMoveStream, blurStream);
   const imageSepiaStream = createImageSepiaStream(sepiaStream);
 
   const controlsOpacityStream = createControlsOpacityStream(stateStream);
@@ -104,6 +105,7 @@ function init() {
       }
       imageElement.alt = image?.alt || "";
       imageCaptionElement.innerText = image?.alt || "";
+      imageCaptionElement.href = image?.url || "";
       setHeight(imageElement, height + (transition.size || 0));
       setOpacity(imageElement, transition.opacity);
       setFilter(imageElement, { blur: transition.blur + blur, sepia });
@@ -120,7 +122,9 @@ function init() {
     setOpacity(previousElement, opacity);
     toggleCssClass(previousElement, "arrowControl--active", isActive);
   });
-  merge(clickControlsStream, clickFooterStream, clickPreviousStream).subscribe(event => event.stopPropagation());
+  merge(clickControlsStream, clickFooterStream, clickPreviousStream, clickImageCaptionStream).subscribe(event =>
+    event.stopPropagation()
+  );
 }
 
 window.onload = init;

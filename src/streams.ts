@@ -44,6 +44,7 @@ export enum State {
 interface Image {
   readonly alt: string;
   readonly src: string;
+  readonly url: string;
 }
 
 interface ImageState {
@@ -403,12 +404,7 @@ export function createImageTransitionStream(
  *
  * @returns A stream emitting the blur filter value for the image.
  */
-export function createImageBlurStream(
-  // TODO: Disable mouse blur when state is "image"?
-  stateStream: Observable<State>,
-  mouseMoveStream: Observable<MouseEvent>,
-  blurStream: Observable<InputEvent>
-) {
+export function createImageBlurStream(mouseMoveStream: Observable<MouseEvent>, blurStream: Observable<InputEvent>) {
   const baseBlurStream = blurStream.pipe(
     map(event => Number((event.target as HTMLInputElement).value)),
     startWith(2)
