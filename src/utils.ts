@@ -59,6 +59,21 @@ export function setOpacity(element: HTMLElement, opacity: number) {
 }
 
 /**
+ * Programmatically sets the value of an input element.
+ */
+export function adjustRangeInputValue(
+  element: HTMLInputElement,
+  { adjustment, min, max }: { adjustment: number; min: number; max: number }
+) {
+  const currentValue = parseInt(element.value);
+  const newValue = currentValue + adjustment;
+  if (currentValue != newValue && newValue >= min && newValue <= max) {
+    element.value = newValue.toString();
+    element.dispatchEvent(new Event("input")); // notifies listeners
+  }
+}
+
+/**
  * Sets the opacity of the given element.
  *
  * Hides the element entirely if the opacity is 0.
@@ -102,4 +117,13 @@ export function getCloudImageUrl(imageUrl: string, windowHeight: number): string
   }
 
   return `https://${cloudImageToken}.cloudimg.io/v7/${imageUrl}?h=${imageHeight}`;
+}
+
+/**
+ * Starts loading images that may not yet exist in the DOM.
+ */
+export function preloadImages(images: string[]) {
+  for (const image of images) {
+    new Image().src = getCloudImageUrl(image, window.innerHeight);
+  }
 }

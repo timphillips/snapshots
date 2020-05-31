@@ -25,17 +25,11 @@ import {
 
 import { getCloudImageUrl } from "./utils";
 
-/**
- * System events.
- */
-export enum Event {
+export enum InfoEvent {
   OpenInfo = "openInfo",
   CloseInfo = "closeInfo"
 }
 
-/**
- * System state.
- */
 export enum State {
   Info = "info",
   Image = "image"
@@ -131,6 +125,9 @@ const imageFadeOut: ImageState[] = [
   { opacity: 0.0, blur: 45, size: -10 }
 ];
 
+/**
+ * @returns An operator function that delays a given observable's emissions by some milliseconds.
+ */
 function delayBy<T>(milliseconds: number): OperatorFunction<T, T> {
   return concatMap(x => of(x).pipe(delay(milliseconds)));
 }
@@ -191,7 +188,7 @@ export function createControlsOpacityStream(stateStream: Observable<State>): Obs
       }
       return of(0);
     }),
-    startWith(0)
+    startWith(0) // hidden to start
   );
 }
 
@@ -211,7 +208,7 @@ export function createInfoOpacityStream(stateStream: Observable<State>): Observa
       }
       return of(0);
     }),
-    startWith(1)
+    startWith(1) // visible to start
   );
 }
 
@@ -233,7 +230,7 @@ export function createOutroOpacityStream(imageIndexStream: Observable<number | u
       } else if (previousIndex === undefined && nextIndex !== undefined) {
         // fade out when transitioning from the end state back to the last image
         return range(0, 6).pipe(
-          map(number => 1 - number / 5), // converts [0, 1, 2, 3, 4] to [1, 0.8, 0.6, 0.4, 0.3, 0])
+          map(number => 1 - number / 5), // converts [0, 1, 2, 3, 4] to [1, 0.8, 0.6, 0.4, 0.3, 0]
           delayBy(40)
         );
       }
@@ -280,15 +277,13 @@ export function createImageStreams(imageIndexStream: Observable<number | undefin
  */
 export function createImageIndexStream(
   stateStream: Observable<State>,
-  previousImageStream: Observable<any>,
-  nextImageStream: Observable<any>,
+  imageAdjustmentStream: Observable<number>,
   images: readonly Image[]
 ) {
-  const transitionStream = stateStream.pipe(
-    switchMap(state => (state === State.Info ? NEVER : merge(previousImageStream, nextImageStream)))
-  );
+  // do not emit image adjustment events when the info page is visible
+  const adjustmentStream = stateStream.pipe(switchMap(state => (state === State.Info ? NEVER : imageAdjustmentStream)));
 
-  return transitionStream.pipe(
+  return adjustmentStream.pipe(
     scan<number, number | undefined>((previous, adjustment) => {
       if (previous === undefined) {
         if (adjustment >= 0) {
@@ -304,25 +299,30 @@ export function createImageIndexStream(
   );
 }
 
+/**
+ * TODO
+ */
 export function createStateStream(
   clickControlsTitleStream: Observable<MouseEvent>,
-  clickStream: Observable<MouseEvent>
+  clickStream: Observable<MouseEvent>,
+  leftArrowStream: Observable<KeyboardEvent>,
+  rightArrowStream: Observable<KeyboardEvent>
 ): Observable<State> {
-  const openInfoStream = clickControlsTitleStream.pipe(mapTo(Event.OpenInfo));
-  const closeInfoStream = clickStream.pipe(mapTo(Event.CloseInfo));
+  const openInfoStream = clickControlsTitleStream.pipe(mapTo(InfoEvent.OpenInfo));
+  const closeInfoStream = merge(clickStream, leftArrowStream, rightArrowStream).pipe(mapTo(InfoEvent.CloseInfo));
 
   return merge(openInfoStream, closeInfoStream).pipe(
-    scan<Event, State>((state, event) => {
+    scan<InfoEvent, State>((state, event) => {
       switch (state) {
         case State.Info: {
           switch (event) {
-            case Event.CloseInfo:
+            case InfoEvent.CloseInfo:
               return State.Image;
           }
         }
         case State.Image: {
           switch (event) {
-            case Event.OpenInfo:
+            case InfoEvent.OpenInfo:
               return State.Info;
           }
         }
@@ -407,16 +407,14 @@ export function createImageTransitionStream(
 export function createImageBlurStream(mouseMoveStream: Observable<MouseEvent>, blurStream: Observable<InputEvent>) {
   const baseBlurStream = blurStream.pipe(
     map(event => Number((event.target as HTMLInputElement).value)),
-    startWith(2)
+    startWith(3)
   );
 
   return mouseMoveStream.pipe(
     combineLatest(baseBlurStream),
     map(([mouseMove, blur]) => {
-      const { centerWidth, centerHeight } = {
-        centerWidth: window.innerWidth / 2,
-        centerHeight: window.innerHeight / 2
-      };
+      const centerWidth = window.innerWidth / 2;
+      const centerHeight = window.innerHeight / 2;
       const horizontalDistanceFromCenter =
         (mouseMove.clientX < centerWidth ? centerWidth - mouseMove.clientX : mouseMove.clientX - centerWidth) /
         centerWidth;
@@ -431,7 +429,7 @@ export function createImageBlurStream(mouseMoveStream: Observable<MouseEvent>, b
 }
 
 /**
- * Converts sepia range input events to image sepia filter values.
+ * Converts sepia range input events to sepia filter values.
  *
  * @returns A stream emitting the speia filter value for the image.
  */
@@ -439,7 +437,7 @@ export function createImageSepiaStream(sepiaStream: Observable<InputEvent>) {
   return sepiaStream.pipe(
     map(event => Number((event.target as HTMLInputElement).value)),
     startWith(0),
-    map(sepia => sepia / 10)
+    map(sepia => sepia / 10) // convert slider value (0 - 10) to filter value (0 - 1)
   );
 }
 
