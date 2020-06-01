@@ -300,7 +300,9 @@ export function createImageIndexStream(
 }
 
 /**
- * TODO
+ * Tracks whether the intro blurb is active or not.
+ *
+ * @returns A stream emitting the current state of the intro blurb.
  */
 export function createStateStream(
   clickControlsTitleStream: Observable<MouseEvent>,
@@ -327,7 +329,7 @@ export function createStateStream(
           }
         }
       }
-      return state;
+      return state; // ignore all other invalid scenarios (e.g. close event when not visible)
     }, State.Info),
     startWith(State.Info),
     distinctUntilChanged()
@@ -350,6 +352,7 @@ export function createImageTransitionStream(
       switch (nextState) {
         case State.Image: {
           if (previousState === State.Info) {
+            // fade in the image when the info blurb is closed
             return from(infoImageFadeIn).pipe(
               delayBy(30),
               map(transition => ({ transition, image: nextImage }))
@@ -385,6 +388,7 @@ export function createImageTransitionStream(
           return NEVER;
         }
         case State.Info: {
+          // fade out the image when the info blurb is opened
           if (previousState === State.Image) {
             return from(infoImageFadeOut).pipe(
               delayBy(30),
@@ -422,7 +426,7 @@ export function createImageBlurStream(mouseMoveStream: Observable<MouseEvent>, b
         (mouseMove.clientY < centerHeight ? centerHeight - mouseMove.clientY : mouseMove.clientY - centerHeight) /
         centerHeight;
       const distance = Math.max(horizontalDistanceFromCenter, verticalDistanceFromCenter);
-      return distance * blur * 2;
+      return distance * blur * 2; // 2 is an magic number that "feels right" :)
     }),
     startWith(0)
   );
