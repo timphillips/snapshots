@@ -1,11 +1,17 @@
 /* Global / resets */
 
+:root {
+  --main-text-color: rgb(255, 255, 255);
+  --secondary-text-color: rgba(255, 255, 255, 0.5);
+  --background-text-color: rgba(0, 0, 0, 0.7);
+}
+
 body {
-  background: black;
+  background: rgba(0, 0, 0);
   margin: 0;
   overflow: hidden;
   font-family: Arial, Helvetica, sans-serif;
-  color: white;
+  color: var(--main-text-color);
 }
 
 a {
@@ -18,17 +24,19 @@ a:hover {
 }
 
 *::selection {
-  color: black;
-  background-color: white;
+  color: rgb(0, 0, 0);
+  background-color: rgb(255, 255, 255);
 }
 
-/* Blurb */
+/* Info / Outro Blurbs */
 
 .blurb {
+  --blurb-width: 300px;
+
   position: absolute;
-  left: calc(50% - 150px);
-  top: calc(50% - 100px);
-  width: 300px;
+  left: calc(50% - var(--blurb-width) / 2);
+  top: calc(50% - 100px); /* offset the blurb a little */
+  width: var(--blurb-width);
   font-size: 12px;
   letter-spacing: 2px;
   transition: opacity 0.1s linear;
@@ -42,15 +50,13 @@ a:hover {
 
 .outro {
   text-align: center;
-  opacity: 0;
+  opacity: 0; /* hidden on initial load, subsequently updated by the app */
 }
 
 /* Image */
 
 .imageContainer {
   position: fixed;
-  /*opacity: 0;
-  transition: opacity 0.1s;*/
 }
 
 .image {
@@ -59,7 +65,6 @@ a:hover {
   top: 50%;
   transform: translate(-50%, -50%);
   user-select: none;
-  /*transition: all 0.1s;*/
 }
 
 .imageCaption {
@@ -68,13 +73,19 @@ a:hover {
   right: 0;
   margin: 10px;
   padding: 10px;
+  background-color: var(--background-text-color);
+}
 
-  background-color: rgb(0, 0, 0, 0.7);
+.imageCaptionLink {
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 2px;
-  color: #666;
+  color: var(--secondary-text-color);
   transition: color 0.2s;
+}
+
+.imageCaptionLink:hover {
+  color: var(--main-text-color);
 }
 
 @media screen and (max-width: 600px) {
@@ -86,17 +97,13 @@ a:hover {
   }
 }
 
-.imageCaption:hover {
-  color: white;
-}
-
 /* Controls */
 
 .controls {
   position: fixed;
   margin: 10px;
   padding: 10px;
-  background-color: rgb(0, 0, 0, 0.7);
+  background-color: var(--background-text-color);
   opacity: 0;
   transition: opacity 0.1s linear;
 }
@@ -130,7 +137,7 @@ a:hover {
   height: 15px;
   background: transparent;
   outline: none;
-  border: 1px solid white;
+  border: 1px solid rgb(255, 255, 255);
 }
 
 .slider::-webkit-slider-thumb {
@@ -138,14 +145,14 @@ a:hover {
   appearance: none;
   width: 10px;
   height: 15px;
-  background: white;
+  background: rgb(255, 255, 255);
   cursor: pointer;
 }
 
 .slider::-moz-range-thumb {
   width: 10px;
   height: 15px;
-  background: white;
+  background: rgb(255, 255, 255);
   cursor: pointer;
 }
 
@@ -175,7 +182,7 @@ a:hover {
   margin: 10px;
   padding: 10px;
 
-  background-color: rgb(0, 0, 0, 0.7);
+  background-color: var(--background-text-color);
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 2px;
@@ -184,11 +191,16 @@ a:hover {
 .footerSeparator {
   margin-left: 4px;
   margin-right: 4px;
-  color: #666;
+  color: var(--secondary-text-color);
 }
 
 .footerSource {
-  color: #666;
+  color: var(--secondary-text-color);
+  transition: color 0.2s;
+}
+
+.footerSource:hover {
+  color: var(--main-text-color);
 }
 
 @media screen and (max-width: 600px) {
@@ -221,16 +233,12 @@ a:hover {
   right: 15px;
 }
 
-.arrowControl--active:hover {
-  background-color: rgb(0, 0, 0, 0.7);
-}
-
 .arrowControl--active {
   cursor: pointer;
 }
 
 .arrowControl--active > .arrow {
-  border-color: white;
+  border-color: rgb(255, 255, 255);
 }
 
 .arrowControl--active:hover > .arrow {
