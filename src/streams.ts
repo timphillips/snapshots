@@ -25,12 +25,12 @@ import {
 
 import { getCloudImageUrl } from "./utils";
 
-export enum InfoEvent {
+enum InfoEvent {
   OpenInfo = "openInfo",
   CloseInfo = "closeInfo"
 }
 
-export enum State {
+enum State {
   Info = "info",
   Image = "image"
 }
@@ -79,7 +79,7 @@ const infoImageFadeIn: ImageState[] = [
 ];
 
 /**
- * Keyframes for fading out an image into the info state.
+ * Keyframes for fading an image into the info state.
  */
 const infoImageFadeOut: ImageState[] = [
   { opacity: 1.0, blur: 0 },
@@ -153,18 +153,18 @@ function loadImage(imagePath: string): Observable<HTMLImageElement> {
 }
 
 /**
- * Disables the "Next" button when there are no more images to view.
+ * Disables the Next button when there are no more images to view.
  *
- * @returns A stream emitting if the "Next" button is active.
+ * @returns A stream emitting `true` if the Next button is active, and `false` otherwise.
  */
 export function createNextButtonActiveStream(imageIndexStream: Observable<number | undefined>): Observable<boolean> {
   return imageIndexStream.pipe(map(imageIndex => imageIndex !== undefined));
 }
 
 /**
- * Disables the "Previous" button when viewing the first image.
+ * Disables the Previous button when viewing the first image.
  *
- * @returns A stream emitting if the "Previous" button is active.
+ * @returns A stream emitting `true` if the Previous button is active, and `false` otherwise.
  */
 export function createPreviousButtonActiveStream(
   imageIndexStream: Observable<number | undefined>
@@ -173,7 +173,7 @@ export function createPreviousButtonActiveStream(
 }
 
 /**
- * Fades in the control panel when the initial image fades in.
+ * Fades in/out the controls panel based on the application state.
  *
  * @returns A stream emitting the opacity of the controls panel.
  */
@@ -193,7 +193,7 @@ export function createControlsOpacityStream(stateStream: Observable<State>): Obs
 }
 
 /**
- * Fades out the into panel when the page is activated.
+ * Fades in/out the info panel based on the application state.
  *
  * @returns A stream emitting the opacity of the info panel.
  */
@@ -300,9 +300,9 @@ export function createImageIndexStream(
 }
 
 /**
- * Tracks whether the intro blurb is active or not.
+ * Tracks whether the info panel is active or not.
  *
- * @returns A stream emitting the current state of the intro blurb.
+ * @returns A stream emitting the current state of the info panel.
  */
 export function createStateStream(
   clickControlsTitleStream: Observable<MouseEvent>,
@@ -352,7 +352,7 @@ export function createImageTransitionStream(
       switch (nextState) {
         case State.Image: {
           if (previousState === State.Info) {
-            // fade in the image when the info blurb is closed
+            // fade in the image when the info panel is closed
             return from(infoImageFadeIn).pipe(
               delayBy(30),
               map(transition => ({ transition, image: nextImage }))
@@ -388,7 +388,7 @@ export function createImageTransitionStream(
           return NEVER;
         }
         case State.Info: {
-          // fade out the image when the info blurb is opened
+          // fade out the image when the info panel is opened
           if (previousState === State.Image) {
             return from(infoImageFadeOut).pipe(
               delayBy(30),
@@ -447,7 +447,6 @@ export function createImageSepiaStream(sepiaStream: Observable<InputEvent>) {
 
 /**
  * Converts image size input events to image height values.
- * Also adjusts the image height slightly when the image is faded in or out.
  *
  * @returns A stream emitting the height of the image.
  */

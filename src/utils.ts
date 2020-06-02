@@ -74,9 +74,7 @@ export function adjustRangeInputValue(
 }
 
 /**
- * Sets the opacity of the given element.
- *
- * Hides the element entirely if the opacity is 0.
+ * Adds or removes a class from the given element based on the flag's value.
  */
 export function toggleCssClass(element: HTMLElement, className: string, active: boolean) {
   if (element.classList.contains(className) && !active) {

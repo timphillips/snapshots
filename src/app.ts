@@ -1,4 +1,3 @@
-import { Observable, combineLatest, fromEvent, merge } from "rxjs";
 import {
   adjustRangeInputValue,
   getCloudImageUrl,
@@ -10,6 +9,7 @@ import {
   shuffleArray,
   toggleCssClass
 } from "./utils";
+import { combineLatest, fromEvent, merge } from "rxjs";
 import {
   createControlsOpacityStream,
   createImageBlurStream,
@@ -93,7 +93,7 @@ export function init() {
   const sepiaStream = fromEvent<InputEvent>(sepiaElement, "input");
   const zoomStream = fromEvent<InputEvent>(zoomElement, "input");
 
-  // composed update streams (no side effects)
+  // composed update streams
   const leftArrowStream = keyUpStream.pipe(filter(key => key.keyCode === 37));
   const rightArrowStream = keyUpStream.pipe(filter(key => key.keyCode === 39));
 
@@ -115,7 +115,7 @@ export function init() {
   const outroOpacityStream = createOutroOpacityStream(imageIndexStream);
   const infoOpacityStream = createInfoOpacityStream(stateStream);
 
-  // apply DOM updates (side effects)
+  // apply DOM updates
   mouseWheelStream
     .pipe(map(event => ((event.deltaY * -1 || event.detail * -1) > 0 ? -10 : 10)))
     .subscribe(adjustment => adjustRangeInputValue(zoomElement, { adjustment, min: 20, max: 200 }));
